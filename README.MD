@@ -1,6 +1,7 @@
 
 # Music application for sharing playlist as well as getting songs of the day
-
+---
+##activate env -> source env/bin/activate
 
 # 🎵 Music Recommendation App - Core Requirements
 > **A smart music recommendation system that helps users discover, rate, and reflect on their music choices!**  
@@ -96,6 +97,31 @@ Each music provider will have a **unique UI theme**:
 - **Genre-based matching** enhances the personalized experience.
 
 ---
+
+## features TBD
+- streaks
+- add friends/connections
+- view friends songs, reiews, ect
+
+---
+# Routes
+## [x] indicates completed routes
+### Non Auth routes
+    - [] /
+        -landing page, sign a user into their music providers 
+    - [] /home
+        - home page after user logs in
+    - [] /song/{userID}
+        -  sends song of the day
+        - need to pass in user info somehow (tracking purposes)
+    - [] /review/{songId}
+        - user reviews
+        - Get {get a review of the song}
+        - Post {Upload a review of the song}
+        - CR(UD) 
+### Auth routes
+    - [] /
+
 
 
 ---
