@@ -2,11 +2,17 @@ package routes
 
 import (
 	"bytes"
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
 	"net/url"
+	"strings"
+
+	"github.com/gorilla/mux"
 
 	sw "loveShare/spotWrapper"
 )
@@ -20,6 +26,8 @@ var (
 	scopes        = "user-library-read user-modify-playback-state playlist-modify-public playlist-modify-private playlist-read-private user-top-read user-follow-read"
 	randomString  = "ChangeLater"
 	IDComboHash64 = "OGIyNzdmYjE2NzIxNDQwMWJiOTQ4NmU1M2QxODM5NjM6ZGI5NzY3MTc5MWVjNDYxZjkyMmM1MjM1OWQ4OWNkZGY="
+	userNamecache = sw.NewCache[string, string]()
+	Month         = 720
 )
 
 // HTML template rendering
@@ -67,7 +75,7 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 	}
 	QV := u.Query()
 	code := QV.Get("code")
-	//state := QV.Get("state") this should just be a username for now so we dont need it
+	username := QV.Get("state")
 	spotifyError := QV.Get("error")
 	if spotifyError != "" {
 		http.Error(w, "Error occurred with Spotify login", http.StatusBadRequest)
@@ -79,23 +87,34 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Authorization code missing", http.StatusBadRequest)
 		return
 	}
-	fmt.Println("Code recived ->", code)
-	// Step 1: Exchange code for tokens
-	//TODO: This is the most imprtant for now -> this needs to sit behind a cache
-	/*
-		tokens, err := getToken(code)
-		if err != nil {
-			http.Error(w, "Failed to get access token", http.StatusInternalServerError)
-			fmt.Println("Error getting access token:", err)
-			return
-		}*/
 
-	// Step 2: Store tokens in MongoDB (Pseudocode)
-	// TODO: Implement actual MongoDB storage
-	//fmt.Println("Storing tokens in DB: AccessToken:", tokens.AccessToken, "RefreshToken:", tokens.Refresh)
-	res, _ := sw.FetchSpotifyTop("BQDV9UxmZ1llhnBiJEQ8QAJG_A4sG-tOQDrBVRndZbquzVLyn6nq6dw5sGmPfoLSQupQTIE9UfMtZ6xBzoLPkYaxrfHuaXT0-BUMEO9CTgNO4glGpEx3HDYcJAgw1CSrs6JXoBadJdBuwgh1hJxnortvJSSwDtQKvk8Zowe43bZy_xKbDlYPkbp8JEgfakQWwgZ9_7Nlp5rvYc5YXxYimGzu40UfH4zmkp67kMhU3DhH5Dgl1zFy1jy-YE9HZOSQLCHJlw-OxM_SF8YYCfAPvt5RkFLme9Q3OnuPuqUmSzbVekhGxRX0-Unz7uRKvhy3VTAP", "tracks")
-	fmt.Println("Result ,", res)
+	tokens, err := getToken(code)
+	if err != nil {
+		http.Error(w, "Failed to get access token", http.StatusInternalServerError)
+		fmt.Println("Error getting access token:", err)
+		return
+	}
+	ctx := context.Background()
+	cache := userNamecache
+	key := fmt.Sprintf("UniqueUserName:%s", username)
+	if !cache.Exist(ctx, key) {
+		fmt.Printf("key -> %s did not already exist Setting it now\n", key)
+		cache.Set(ctx, key, "1", Month)
+	}
+	fmt.Printf("did not set key %s this time\n", key)
+	//Need to define what info we want to load from spotify on login from use
+	//
+	res, _ := sw.FetchSpotifyTop(ctx, tokens.AccessToken, "tracks")
+	encoder := json.NewEncoder(w)
+	encoder.Encode(res)
+	//fmt.Println("Result ,", res)
 	//TODO: this is where id like store the tokens in mongo DB so we dont need to always look it up
+	// honestly this should have to render the template this should handle adding user to the datase and such and then
+	// after setting up in DB and setting updefualt profilel it redirects to the actaully home page.
+}
+
+func LoveShare(w http.ResponseWriter, r *http.Request) {
+
 	tmpl, err := template.ParseFiles("templates/SongofDay.html")
 	if err != nil {
 		fmt.Println("Error reading template ->>", err)
@@ -114,12 +133,18 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 // returns link that user will use to login with spotify
 func RedirectLink(w http.ResponseWriter, r *http.Request) {
 	var baseURL = "https://accounts.spotify.com/authorize"
+	var username = r.Header.Get("X-username")
+	if username == "" {
+		w.WriteHeader(400)
+		w.Write([]byte("Username must be provider in the headers as X-username : {Username}"))
+		return
+	}
 	params := url.Values{}
 	params.Add("client_id", clientID)
 	params.Add("response_type", "code")
 	params.Add("redirect_uri", redirect)
 	// in the future the "state" that we pass along will be the username that is provided when calling this endpoint
-	params.Add("state", randomString)
+	params.Add("state", username)
 	params.Add("scope", scopes)
 	params.Add("show_dialog", "true")
 
@@ -157,32 +182,32 @@ func Test(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	w.Write([]byte("Hello world"))
 }
-
-func getToken(code string) (tokenResponse, error) {
+func getToken(code string) (sw.TokenResponse, error) {
 	var endpoint = "https://accounts.spotify.com/api/token"
-	var invalidResponse tokenResponse
-	//idSecreteCombo := fmt.Sprintf("%s:%s", clientID, clientSecrete)
-	headerAuth := IDComboHash64 //base64.StdEncoding.EncodeToString([]byte(idSecreteCombo))
+	var invalidResponse sw.TokenResponse
 
-	body := map[string]string{
-		"grant_type":   "authorization_code",
-		"code":         code,
-		"redirect_uri": redirect,
-	}
-	jsonBody, err := json.Marshal(body)
-	if err != nil {
-		fmt.Println("Error marshalling JSON:", err)
-		return invalidResponse, fmt.Errorf("error marshalling spotify info into json %e", err)
-	}
-	req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(jsonBody))
+	// Correctly format client credentials
+	idSecretCombo := fmt.Sprintf("%s:%s", clientID, clientSecrete)
+	encodedAuth := base64.StdEncoding.EncodeToString([]byte(idSecretCombo))
+
+	// Properly encode request body for application/x-www-form-urlencoded
+	data := url.Values{}
+	data.Set("grant_type", "authorization_code")
+	data.Set("code", code)
+	data.Set("redirect_uri", redirect)
+	encodedBody := strings.NewReader(data.Encode())
+
+	req, err := http.NewRequest("POST", endpoint, encodedBody)
 	if err != nil {
 		fmt.Println("Error creating request:", err)
 		return invalidResponse, err
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Authorization", fmt.Sprintf("Basic %v", headerAuth)) // Example token header
 
-	// make request
+	// Set correct headers
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", "Basic "+encodedAuth)
+
+	// Make request
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -190,16 +215,22 @@ func getToken(code string) (tokenResponse, error) {
 		return invalidResponse, err
 	}
 	defer resp.Body.Close()
-	var Response tokenResponse
-	err = json.NewDecoder(resp.Body).Decode(&Response)
+
+	// Read response body
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Printf("Response Status: %d\nResponse Body: %s\n", resp.StatusCode, string(body))
+
+	if resp.StatusCode != http.StatusOK {
+		return invalidResponse, fmt.Errorf("error: response status code %d", resp.StatusCode)
+	}
+
+	var response sw.TokenResponse
+	err = json.Unmarshal(body, &response)
 	if err != nil {
-		return invalidResponse, err
+		return invalidResponse, fmt.Errorf("error parsing response: %v", err)
 	}
-	if resp.StatusCode != 200 {
-		fmt.Printf("ERROR: response status code %d , response body %v\n", resp.StatusCode, resp.Body)
-	}
-	fmt.Printf("status code : %d json Response from token endpoint %v\n", resp.StatusCode, Response)
-	return Response, nil
+
+	return response, nil
 }
 
 // just returns a access token and that tokens expiration time
@@ -234,11 +265,41 @@ func refresh(refreshToken string) (string, int, error) {
 	defer resp.Body.Close()
 
 	// Decode response
-	var Response refreshResponse
+	var Response sw.RefreshResponse
 	err = json.NewDecoder(resp.Body).Decode(&Response)
 	if err != nil {
 		return "", 0, fmt.Errorf("error decoding response: %w", err)
 	}
 
 	return Response.AccessToken, Response.Expir, nil
+}
+
+type Response struct {
+	Message string `json:"message"`
+}
+
+func UniqueUsername(w http.ResponseWriter, r *http.Request) {
+	cache := userNamecache
+	w.Header().Set("Content-Type", "application/json") // Ensure JSON response
+
+	vars := mux.Vars(r)
+	name, exists := vars["name"]
+	if !exists {
+		http.Error(w, `{"message": "Missing parameter"}`, http.StatusBadRequest)
+		return
+	}
+
+	ctx := context.Background()
+	validUsername := cache.Get(ctx, fmt.Sprintf("UniqueUserName:%s", name))
+
+	var resp Response
+	if validUsername == "" {
+		w.WriteHeader(http.StatusOK)
+		resp.Message = fmt.Sprintf("Username %s is available", name)
+	} else {
+		w.WriteHeader(http.StatusConflict)
+		resp.Message = fmt.Sprintf("Username %s already exists. Choose another one", name)
+	}
+
+	json.NewEncoder(w).Encode(resp) // Encode response as JSON
 }

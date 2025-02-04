@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gorilla/mux"
+
 	"loveShare/routes"
 )
 
@@ -12,14 +14,21 @@ var (
 )
 
 func main() {
-	http.HandleFunc("/test", routes.Test)          //api
-	http.HandleFunc("/login", routes.HomePage)     //html
-	http.HandleFunc("/signIn", routes.SignIn)      // api
-	http.HandleFunc("/link", routes.RedirectLink)  // api
-	http.HandleFunc("/callback", routes.SongofDay) // html
-	http.HandleFunc("/auth", routes.RedirectPage)  //html
-	http.HandleFunc("/Songs", routes.RedirectPage) //api
-	Addr := fmt.Sprintf(":%s", port)
-	fmt.Println("Server is running on port ", Addr)
-	http.ListenAndServe(Addr, nil)
+	r := mux.NewRouter().StrictSlash(true) // /exist/r/ == /exist/r
+
+	// Define routes
+	r.HandleFunc("/test", routes.Test).Methods("GET")                   // API
+	r.HandleFunc("/login", routes.HomePage).Methods("GET")              // HTML
+	r.HandleFunc("/signIn", routes.SignIn).Methods("POST")              // API
+	r.HandleFunc("/link", routes.RedirectLink).Methods("GET")           // API
+	r.HandleFunc("/callback", routes.SongofDay).Methods("GET")          // HTML
+	r.HandleFunc("/loveShare", routes.LoveShare).Methods("GET")         // HTML
+	r.HandleFunc("/auth", routes.RedirectPage).Methods("GET")           // HTML
+	r.HandleFunc("/Songs", routes.RedirectPage).Methods("GET")          // API
+	r.HandleFunc("/exist/{name}", routes.UniqueUsername).Methods("GET") // API
+	// Start server
+	addr := fmt.Sprintf(":%s", port)
+	fmt.Println("Server is running on port", addr)
+	http.ListenAndServe(addr, r)
+
 }
