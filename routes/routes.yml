@@ -39,15 +39,21 @@ paths:
   /signIn:
     post:
       summary: Sign in user
-      description: Handles creation of a user record in the database (placeholder in this sample), then redirects to /auth on success.
+      description: Accepts a JSON body containing a username, creates a user (placeholder in this example), and redirects to `/auth` on success.
       operationId: signInUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignIn'
       responses:
         '200':
-          description: Indicates successful sign-in (although the code calls an internal function and redirects)
+          description: Indicates successful sign-in.
         '303':
-          description: Redirects to /auth on success
+          description: Redirects to /auth on success.
         '405':
-          description: Returned if a non-POST request is made to this endpoint
+          description: Returned if a non-POST request is made to this endpoint.
 
   /link:
     get:
@@ -78,7 +84,7 @@ paths:
   /callback:
     get:
       summary: Handle Spotify OAuth callback
-      description: Receives the authorization code from Spotify, exchanges it for an access token, and fetches user data (tracks, etc.).
+      description: Receives the authorization code from Spotify, exchanges it for an access token, and returns the user's top tracks.
       operationId: spotifyCallback
       parameters:
         - name: code
@@ -105,13 +111,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                description: Sample response of top tracks or other relevant user data
-                items:
-                  type: object
-                  example:
-                    id: "track_id"
-                    name: "Song Title"
+                $ref: '#/components/schemas/UserResponse'
         '400':
           description: Missing authorization code or Spotify returned an error
         '500':
@@ -185,3 +185,357 @@ paths:
                   message:
                     type: string
                     example: Username john already exists. Choose another one
+
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://accounts.spotify.com/authorize
+          tokenUrl: https://accounts.spotify.com/api/token
+
+  schemas:
+    SignIn:
+      type: object
+      properties:
+        username:
+          type: string
+      required:
+        - username
+      example:
+        username: "john_doe"
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+        scope:
+          type: string
+        exp:
+          type: integer
+        refresh_token:
+          type: string
+      required:
+        - access_token
+        - token_type
+      example:
+        access_token: "BQCSs6..."
+        token_type: "Bearer"
+        scope: "user-library-read user-top-read"
+        exp: 3600
+        refresh_token: "AQCO0p..."
+
+    RefreshResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        exp:
+          type: integer
+      required:
+        - access_token
+      example:
+        access_token: "BQCSs6...refreshed"
+        exp: 3600
+
+    UserResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          description: List of track objects
+          items:
+            type: object
+            properties:
+              album:
+                type: object
+                properties:
+                  album_type:
+                    type: string
+                  artists:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        external_urls:
+                          type: object
+                          properties:
+                            spotify:
+                              type: string
+                        href:
+                          type: string
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        type:
+                          type: string
+                        uri:
+                          type: string
+                  available_markets:
+                    type: array
+                    items:
+                      type: string
+                  external_urls:
+                    type: object
+                    properties:
+                      spotify:
+                        type: string
+                  href:
+                    type: string
+                  id:
+                    type: string
+                  images:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        height:
+                          type: integer
+                        url:
+                          type: string
+                        width:
+                          type: integer
+                  is_playable:
+                    type: boolean
+                  name:
+                    type: string
+                  release_date:
+                    type: string
+                  release_date_precision:
+                    type: string
+                  total_tracks:
+                    type: integer
+                  type:
+                    type: string
+                  uri:
+                    type: string
+              artists:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    external_urls:
+                      type: object
+                      properties:
+                        spotify:
+                          type: string
+                    href:
+                      type: string
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    type:
+                      type: string
+                    uri:
+                      type: string
+              available_markets:
+                type: array
+                items:
+                  type: string
+              disc_number:
+                type: integer
+              duration_ms:
+                type: integer
+              explicit:
+                type: boolean
+              external_ids:
+                type: object
+                properties:
+                  isrc:
+                    type: string
+              external_urls:
+                type: object
+                properties:
+                  spotify:
+                    type: string
+              href:
+                type: string
+              id:
+                type: string
+              is_local:
+                type: boolean
+              is_playable:
+                type: boolean
+              name:
+                type: string
+              popularity:
+                type: integer
+              preview_url:
+                type: string
+                nullable: true
+              track_number:
+                type: integer
+              type:
+                type: string
+              uri:
+                type: string
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        href:
+          type: string
+        next:
+          type: string
+          nullable: true
+        previous:
+          type: string
+          nullable: true
+      example:
+        items:
+          - album:
+              album_type: "single"
+              artists:
+                - external_urls:
+                    spotify: "https://open.spotify.com/artist/..."
+                  href: "https://api.spotify.com/v1/artists/..."
+                  id: "1Xyo4u8uXC1ZmMpatF05PJ"
+                  name: "The Weeknd"
+                  type: "artist"
+                  uri: "spotify:artist:1Xyo4u8uXC1ZmMpatF05PJ"
+              available_markets: ["US", "CA"]
+              external_urls:
+                spotify: "https://open.spotify.com/album/..."
+              href: "https://api.spotify.com/v1/albums/..."
+              id: "2ODvWsOgouMbaA5xf0RkJe"
+              images:
+                - height: 640
+                  url: "https://i.scdn.co/image/ab67616d0000b273..."
+                  width: 640
+              is_playable: true
+              name: "Starboy"
+              release_date: "2016-11-25"
+              release_date_precision: "day"
+              total_tracks: 18
+              type: "album"
+              uri: "spotify:album:2ODvWsOgouMbaA5xf0RkJe"
+            artists:
+              - external_urls:
+                  spotify: "https://open.spotify.com/artist/..."
+                href: "https://api.spotify.com/v1/artists/..."
+                id: "1Xyo4u8uXC1ZmMpatF05PJ"
+                name: "The Weeknd"
+                type: "artist"
+                uri: "spotify:artist:1Xyo4u8uXC1ZmMpatF05PJ"
+            available_markets: ["US", "CA"]
+            disc_number: 1
+            duration_ms: 230453
+            explicit: true
+            external_ids:
+              isrc: "USUG11600981"
+            external_urls:
+              spotify: "https://open.spotify.com/track/..."
+            href: "https://api.spotify.com/v1/tracks/..."
+            id: "7MXVkk9YMctZqd1Srtv4MB"
+            is_local: false
+            is_playable: true
+            name: "Starboy"
+            popularity: 95
+            preview_url: null
+            track_number: 1
+            type: "track"
+            uri: "spotify:track:7MXVkk9YMctZqd1Srtv4MB"
+        total: 50
+        limit: 20
+        offset: 0
+        href: "https://api.spotify.com/v1/me/top/tracks?limit=20&offset=0"
+        next: "https://api.spotify.com/v1/me/top/tracks?limit=20&offset=20"
+        previous: null
+
+    UserTopArtist:
+      type: object
+      properties:
+        items:
+          type: array
+          description: List of artist objects
+          items:
+            type: object
+            properties:
+              external_urls:
+                type: object
+                properties:
+                  spotify:
+                    type: string
+              followers:
+                type: object
+                properties:
+                  href:
+                    type: string
+                    nullable: true
+                  total:
+                    type: integer
+              genres:
+                type: array
+                items:
+                  type: string
+              href:
+                type: string
+              id:
+                type: string
+              images:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    height:
+                      type: integer
+                    url:
+                      type: string
+                    width:
+                      type: integer
+              name:
+                type: string
+              popularity:
+                type: integer
+              type:
+                type: string
+              uri:
+                type: string
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        href:
+          type: string
+        next:
+          type: string
+          nullable: true
+        previous:
+          type: string
+          nullable: true
+      example:
+        items:
+          - external_urls:
+              spotify: "https://open.spotify.com/artist/..."
+            followers:
+              href: null
+              total: 1000000
+            genres:
+              - "pop"
+              - "r&b"
+            href: "https://api.spotify.com/v1/artists/..."
+            id: "1Xyo4u8uXC1ZmMpatF05PJ"
+            images:
+              - height: 640
+                url: "https://i.scdn.co/image/ab6761610000e5eb..."
+                width: 640
+            name: "The Weeknd"
+            popularity: 95
+            type: "artist"
+            uri: "spotify:artist:1Xyo4u8uXC1ZmMpatF05PJ"
+        total: 50
+        limit: 20
+        offset: 0
+        href: "https://api.spotify.com/v1/me/top/artists?limit=20&offset=0"
+        next: "https://api.spotify.com/v1/me/top/artists?limit=20&offset=20"
+        previous: null
