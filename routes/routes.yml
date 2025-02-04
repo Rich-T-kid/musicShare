@@ -1,0 +1,187 @@
+openapi: 3.0.0
+info:
+  title: LoveShare API
+  description: API documentation for the LoveShare service
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local Development Server
+  - url: https://loveshareservice.example.com
+    description: Production Server
+
+paths:
+  /test:
+    get:
+      summary: Test endpoint
+      description: Returns a simple "Hello world" message to verify service availability.
+      operationId: testEndpoint
+      responses:
+        '200':
+          description: A successful response
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Hello world
+
+  /login:
+    get:
+      summary: Render the login page
+      description: Serves an HTML page where users can initiate the login process.
+      operationId: getLoginPage
+      responses:
+        '200':
+          description: Renders the login HTML page
+        '500':
+          description: Error loading or rendering the template
+
+  /signIn:
+    post:
+      summary: Sign in user
+      description: Handles creation of a user record in the database (placeholder in this sample), then redirects to /auth on success.
+      operationId: signInUser
+      responses:
+        '200':
+          description: Indicates successful sign-in (although the code calls an internal function and redirects)
+        '303':
+          description: Redirects to /auth on success
+        '405':
+          description: Returned if a non-POST request is made to this endpoint
+
+  /link:
+    get:
+      summary: Generate Spotify authorization link
+      description: Returns a JSON object containing the Spotify authorization link. Requires a username to be provided in the header as X-username.
+      operationId: getSpotifyAuthLink
+      parameters:
+        - in: header
+          name: X-username
+          description: Username used to track user state
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Returns a JSON object with the authorization link
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  link:
+                    type: string
+                    example: https://accounts.spotify.com/authorize?client_id=...
+        '400':
+          description: Missing username in headers
+
+  /callback:
+    get:
+      summary: Handle Spotify OAuth callback
+      description: Receives the authorization code from Spotify, exchanges it for an access token, and fetches user data (tracks, etc.).
+      operationId: spotifyCallback
+      parameters:
+        - name: code
+          in: query
+          description: Authorization code returned by Spotify
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          description: Username passed as state from the initial link request
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          description: Error message from Spotify if authorization fails
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully retrieved tokens and user data
+          content:
+            application/json:
+              schema:
+                type: array
+                description: Sample response of top tracks or other relevant user data
+                items:
+                  type: object
+                  example:
+                    id: "track_id"
+                    name: "Song Title"
+        '400':
+          description: Missing authorization code or Spotify returned an error
+        '500':
+          description: Error exchanging code for tokens
+
+  /loveShare:
+    get:
+      summary: Render LoveShare page
+      description: Serves an HTML page with the SongOfDay (or other user-specific content).
+      operationId: getLoveSharePage
+      responses:
+        '200':
+          description: Renders the SongofDay HTML page
+        '500':
+          description: Error loading or rendering the template
+
+  /auth:
+    get:
+      summary: Render redirect page
+      description: Serves an HTML page after the user logs in with Spotify (used in the sample flow).
+      operationId: getRedirectPage
+      responses:
+        '200':
+          description: Renders a redirect HTML page
+        '500':
+          description: Error loading or rendering the template
+
+  /Songs:
+    get:
+      summary: (Placeholder) Endpoint for fetching or displaying songs
+      description: Currently redirects to the same page as `/auth`. Could be customized to return a list of songs or playlist info.
+      operationId: getSongs
+      responses:
+        '200':
+          description: Renders a redirect HTML page
+        '500':
+          description: Error loading or rendering the template
+
+  /exist/{name}:
+    get:
+      summary: Check if a username is unique
+      description: Returns 200 if username is available, or 409 if it already exists.
+      operationId: checkUniqueUsername
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: The username to check
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Username is available
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Username john is available
+        '400':
+          description: Missing username parameter in path
+        '409':
+          description: Username is already taken
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Username john already exists. Choose another one
