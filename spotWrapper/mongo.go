@@ -14,6 +14,8 @@ type cache[T comparable, V any] interface {
 	Set(ctx context.Context, key string, data T, expire int) // Handles inserts & updates
 	Delete(ctx context.Context, key string)
 	Exist(ctx context.Context, key string) bool
+	StoreTokens(id, access, refresh string) error
+	GetTokens(id string) (string, string, error) // if more flexibility is needed later return a slice of strings
 }
 
 // Factory function to create a new cache instance
@@ -77,6 +79,40 @@ func (s *spotish[T, V]) Exist(ctx context.Context, key string) bool {
 		return false
 	}
 	return exists > 0
+}
+func (s *spotish[T, V]) StoreTokens(userID, accessToken, refreshToken string) error {
+	key := fmt.Sprintf("user:%s", userID) // Store by user ID
+
+	err := s.client.HSet(key, "access_token", accessToken).Err()
+	if err != nil {
+		return fmt.Errorf("failed to store access token in Redis: %w", err)
+	}
+
+	err = s.client.HSet(key, "refresh_token", refreshToken).Err()
+	if err != nil {
+		return fmt.Errorf("failed to store refresh token in Redis: %w", err)
+	}
+
+	return nil
+
+}
+
+func (s *spotish[T, V]) GetTokens(userID string) (string, string, error) {
+
+	key := fmt.Sprintf("user:%s", userID)
+
+	// Fetch both access and refresh tokens
+	accessToken, err := s.client.HGet(key, "access_token").Result()
+	if err != nil {
+		return "", "", fmt.Errorf("error fetching access token: %w", err)
+	}
+
+	refreshToken, err := s.client.HGet(key, "refresh_token").Result()
+	if err != nil {
+		return "", "", fmt.Errorf("error fetching refresh token: %w", err)
+	}
+
+	return accessToken, refreshToken, nil
 }
 
 func SaveUser() {
