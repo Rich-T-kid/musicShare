@@ -105,7 +105,9 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 	// store users access and refresh tokens in a reddis  HSET
 	cache.StoreTokens(username, tokens.AccessToken, tokens.Refresh)
 	//Need to define what info we want to load from spotify on login from use
-	res, _ := sw.FetchSpotifyTop(ctx, username, tokens.AccessToken, "tracks")
+	fmt.Println("User")
+	res, err := sw.FetchSpotifyTop(ctx, username, tokens.AccessToken, "tracks")
+	fmt.Println("Tylers response -> ", res, err)
 	encoder := json.NewEncoder(w)
 	encoder.Encode(res)
 	//fmt.Println("Result ,", res)

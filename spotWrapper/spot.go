@@ -37,6 +37,7 @@ func FetchSpotifyTop(ctx context.Context, userid, accessToken, dataType string) 
 	// Send request with timeout
 	resp, err := proxy.RetryRequest(ctx, req, userid)
 	if err != nil {
+		fmt.Println("1")
 		return nil, fmt.Errorf("error making request: %w", err)
 	}
 	defer resp.Body.Close()

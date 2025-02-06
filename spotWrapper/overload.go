@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"loveShare/logs"
 )
 
 /*
@@ -27,6 +29,10 @@ var (
 	failedRetry      = errors.New("http request retrys were unsuccessful")
 	serverDown       = errors.New("target servers are down, cannot complete http request")
 	unexpectedStatus = errors.New("received an unexpected HTTP status code")
+)
+
+var (
+	logger = logs.NewLogger()
 )
 
 /*
@@ -138,9 +144,16 @@ func (o *Overload) RetryRequest(ctx context.Context, req *http.Request, userid s
 			} else if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
 				return resp, nil // ✅ Success, return response
 			} else if resp.StatusCode == 401 {
-
+				logger.Info(fmt.Sprintf("user:%s did not have a valid access Token Attempting to obtain new one", userid))
+				fmt.Println("Write to log file as well as getting new refresh token")
 			} else { // 400 , 403 , 404 , retrying wont affect these resposne codes so just break out early and return the error
 				// clean up resources
+				bodyBytes, err := io.ReadAll(resp.Body)
+				if err != nil {
+					fmt.Println(err)
+				}
+				bodyString := string(bodyBytes)
+				logger.Route(fmt.Sprintf("request to %s returned a %d StatusCode with a body of :%s", req.URL, resp.StatusCode, bodyString))
 				resp.Body.Close()
 				return resp, unexpectedStatus
 			}
