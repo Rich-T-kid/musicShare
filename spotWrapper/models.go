@@ -179,6 +179,11 @@ type UserProfileResponse struct {
 	Country     string `json:"country"`
 	DisplayName string `json:"display_name"`
 	Email       string `json:"email"`
+	Images      []struct {
+		//Height int    `json:"height"`
+		URL string `json:"url"`
+		//Width  int    `json:"width"`
+	} `json:"images"`
 	//ExplicitContent struct {
 	//	FilterEnabled bool `json:"filter_enabled"`
 	//	FilterLocked  bool `json:"filter_locked"`
@@ -191,7 +196,7 @@ type UserProfileResponse struct {
 	//	Total int         `json:"total"`
 	//} `json:"followers"`
 	//Href    string        `json:"href"`
-	ID string `json:"id"`
+	SpotifyID string `json:"id"`
 	///Images  []interface{} `json:"images"`
 	//Product string        `json:"product"`
 	//Type    string        `json:"type"`
@@ -220,7 +225,7 @@ type Image struct {
 }
 type UserMusicInfo struct {
 	FollowedArtist []FollowedArtist `json:"FollowedArtist"` // finsihed
-	TopTracks      []UserTopTrack   `json:"TopTracks"`      // Finished
+	TopTracks      UserTopTrack     `json:"TopTracks"`      // Finished
 	TopsArtist     []UserTopArtist  `json:"TopsArtist"`     // Finished
 }
 type UserTopTrack struct {

@@ -14,6 +14,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"loveShare/logs"
 	sw "loveShare/spotWrapper"
 )
 
@@ -27,6 +28,7 @@ var (
 	randomString  = "ChangeLater"
 	IDComboHash64 = "OGIyNzdmYjE2NzIxNDQwMWJiOTQ4NmU1M2QxODM5NjM6ZGI5NzY3MTc5MWVjNDYxZjkyMmM1MjM1OWQ4OWNkZGY="
 	userNamecache = sw.NewCache[string, string]()
+	logger        = logs.NewLogger()
 	Month         = 720
 )
 
@@ -106,10 +108,9 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 	cache.StoreTokens(username, tokens.AccessToken, tokens.Refresh)
 	//Need to define what info we want to load from spotify on login from use
 	fmt.Println("User")
-	res, err := sw.FetchSpotifyTop(ctx, username, tokens.AccessToken, "tracks")
-	fmt.Println("Tylers response -> ", res, err)
-	encoder := json.NewEncoder(w)
-	encoder.Encode(res)
+	//res := sw.NewUserProfile(tokens.AccessToken, username)
+	// save to MOngo DB here later
+	http.Redirect(w, r, "/loveShare", http.StatusSeeOther)
 	//fmt.Println("Result ,", res)
 	//TODO: this is where id like store the tokens in mongo DB so we dont need to always look it up
 	// honestly this should have to render the template this should handle adding user to the datase and such and then

@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 )
 
 // handles the API related stuff
@@ -85,8 +86,10 @@ func checkResponseStatusCode(resp *http.Response, validCodes []int) error {
 	return fmt.Errorf("unexpected status code %d", resp.StatusCode)
 }
 
+// Have the overloader perform all the request after you test each method
 // Function to get user data and unmarshal it into the provided struct
-func getUserData(token string, dest *UserResponse) {
+// Works
+func GetUserData(token string) *UserProfileResponse {
 	// Hardcode the endpoint for testing purposes
 	endpoint := "https://api.spotify.com/v1/me"
 
@@ -113,14 +116,14 @@ func getUserData(token string, dest *UserResponse) {
 	// Validate the response status code
 	err = checkResponseStatusCode(resp, []int{200})
 	handleError(err, "checkResponseStatusCode")
-
 	// Read the response body
 	bodyBytes, err := io.ReadAll(resp.Body)
 	handleError(err, "io.ReadAll")
-
 	// Unmarshal the response body into the provided struct
-	err = json.Unmarshal(bodyBytes, dest)
+	var dest UserProfileResponse
+	err = json.Unmarshal(bodyBytes, &dest)
 	handleError(err, "json.Unmarshal")
+	return &dest
 }
 
 // ConvertToFollowedArtists converts SpotArtist struct to FollowedArtist structs
@@ -155,7 +158,7 @@ func ConvertToFollowedArtists(spotArtists *SpotArtist) []FollowedArtist {
 }
 
 // Function to get artist information and convert it to FollowedArtist structs
-func ArtistInfo(token string, dest *SpotArtist) []FollowedArtist {
+func ArtistInfo(token string) []FollowedArtist {
 	// Hardcode the endpoint for testing purposes
 	endpoint := "https://api.spotify.com/v1/me/following?type=artist"
 
@@ -186,13 +189,13 @@ func ArtistInfo(token string, dest *SpotArtist) []FollowedArtist {
 	// Read the response body
 	bodyBytes, err := io.ReadAll(resp.Body)
 	handleError(err, "io.ReadAll")
-
+	var dest SpotArtist
 	// Unmarshal the response body into the provided struct
-	err = json.Unmarshal(bodyBytes, dest)
+	err = json.Unmarshal(bodyBytes, &dest)
 	handleError(err, "json.Unmarshal")
 
 	// Return the converted FollowedArtist structs
-	return ConvertToFollowedArtists(dest)
+	return ConvertToFollowedArtists(&dest)
 }
 
 // Function to create a playlist using the Spotify API
@@ -292,6 +295,9 @@ func AddToPlaylist(token, songURI, playlistID string) bool {
 	// Return true if successful
 	return true
 }
+
+// slight variation to the above method. Only difference is that the song URI doesnt need to have the spotify:track: prefix
+// more than likely will remove
 func addtoPlaylist(endpoint, token, songURI, playlistID string) bool {
 	// Ensure valid inputs
 	if endpoint == "" || token == "" || songURI == "" || playlistID == "" {
@@ -397,7 +403,7 @@ func TopArtist(token string) []UserTopArtist {
 	for {
 		// Check if we've reached the limit for the number of requests
 		if pageCount >= limit {
-			log.Println("Reached the request limit, stopping further requests.")
+			log.Printf("Reached the request limit of %d pages, stopping further requests.\n", limit)
 			break
 		}
 
@@ -534,4 +540,18 @@ func TopTracks(token string) UserTopTrack {
 	// Debug: Print the length of TopAlbums and TopSingles
 
 	return result
+}
+
+func NewDocument(followed []FollowedArtist, topTracks UserTopTrack, UserFavorites []UserTopArtist) *UserMusicInfo {
+	return &UserMusicInfo{
+		FollowedArtist: followed,
+		TopTracks:      topTracks,
+		TopsArtist:     UserFavorites,
+	}
+}
+
+func NewUserProfile(token, userID string) *UserMusicInfo {
+	currentTime := time.Now()
+	fmt.Printf("Finished proccessing new user %s at %v", userID, currentTime)
+	return NewDocument(ArtistInfo(token), TopTracks(token), TopArtist(token))
 }
