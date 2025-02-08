@@ -13,8 +13,6 @@ var (
 
 /*
 TODO: move these routes to the / routes folder and keep the main file minimal.
-	  Define what information we want user documents to contain for mongoDB (username,email,top songs, top albums, ect) -> Done
-	  Set up functions and endpoints to handle this -> done
 	  cache all of the data the spotifys endpoints return so we dont need to keep calling spotify -> half done, Not 100 % sure what endpoints are super critcal right now
 	  @
 	  Set up CDN  (AWS -> tyler .B and tyler .S)
