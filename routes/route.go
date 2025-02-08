@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -107,11 +108,15 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("did not set key %s this time\n", key)
 	cache.StoreTokens(username, tokens.AccessToken, tokens.Refresh)
 	fmt.Println("User")
-	res := sw.GetUserData(ctx, tokens.AccessToken)
+	res, err := sw.NewUserProfile(ctx, tokens.AccessToken)
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println(res)
-	//res := sw.NewUserProfile(tokens.AccessToken, username)
-	// save to MOngo DB here later
-	http.Redirect(w, r, "/loveShare", http.StatusSeeOther)
+	encoder := json.NewEncoder(w)
+	encoder.Encode(res)
+
+	//http.Redirect(w, r, "/loveShare", http.StatusSeeOther)
 	//fmt.Println("Result ,", res)
 	//TODO: this is where id like store the tokens in mongo DB so we dont need to always look it up
 	// honestly this should have to render the template this should handle adding user to the datase and such and then

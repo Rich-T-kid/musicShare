@@ -20,6 +20,9 @@ var (
 	proxy = newOverloader()
 )
 
+const PlayListName = "Rhythm Reflections"
+const PlaylistDescription = "This playlist is your personal musical corner, capturing every track that resonates with you. Each like you give adds a new gem, building a reflection of your evolving taste. Whether it’s a dance anthem or a calming instrumental, watch your collection grow with every fresh discovery. Let these melodies spark joyful memories and inspire new favorites. Enjoy an ever-evolving soundtrack that tells your story, one beloved track at a time!"
+
 // FetchSpotifyTop fetches top artists or tracks from Spotify API
 func FetchSpotifyTop(ctx context.Context, userid, accessToken, dataType string) (SpotifyTopResponse, error) {
 	// Validate input type
@@ -72,7 +75,7 @@ func FetchSpotifyTop(ctx context.Context, userid, accessToken, dataType string) 
 // Helper function to handle errors consistently
 func handleError(err error, context string) {
 	if err != nil {
-		log.Fatalf("Error in %s: %v", context, err)
+		log.Fatalf("Error in %s: ->>> %v", context, err)
 	}
 }
 
@@ -551,12 +554,63 @@ func NewDocument(followed []FollowedArtist, topTracks UserTopTrack, UserFavorite
 	}
 }
 
-func NewUserProfile(ctx context.Context, token string) (*UserMusicInfo, error) {
+// Starts off as empty doesnt need to be allocated right now
+func NewMusicPlaylist(playlistID string) *MusicSharePlaylist {
+	return &MusicSharePlaylist{
+		Name:        PlayListName,
+		PlaylistURI: playlistID,
+		Songs:       make([]spotifyURI, 0),
+	}
+}
+func NewDBDocument(userProfile UserProfileResponse, userMusicInfo UserMusicInfo, playlist MusicSharePlaylist) *UserMongoDocument {
+	return &UserMongoDocument{
+		UserProfileResponse: userProfile,
+		UserMusicInfo:       userMusicInfo,
+		MusicSharePlaylist:  playlist,
+		CreatedAt:           time.Now(),
+		Updated:             time.Now(),
+	}
+}
+
+// NewUserProfile builds a new user profile document by fetching music data,
+// user data, and creating a new playlist.
+func NewUserProfile(ctx context.Context, token string) (*UserMongoDocument, error) {
+	// Record current time, which can be useful for logging
 	currentTime := time.Now()
+
+	// Retrieve the user ID from context
 	userID, ok := ctx.Value(UsernameKey{}).(string)
 	if !ok {
-		return nil, fmt.Errorf("username was not properly set in the context \n")
+		return nil, fmt.Errorf("username was not properly set in the context")
 	}
-	fmt.Printf("Finished proccessing new user %s at %v", userID, currentTime)
-	return NewDocument(ArtistInfo(ctx, token), TopTracks(ctx, token), TopArtist(ctx, token)), nil
+	fmt.Printf("Finished processing new user %s at %v\n", userID, currentTime)
+
+	// Gather music data from Spotify
+	// Note: These functions (ArtistInfo, TopTracks, TopArtist) do not return errors,
+	// so we call them directly within NewDocument.
+	userMusicInfo := NewDocument(
+		ArtistInfo(ctx, token),
+		TopTracks(ctx, token),
+		TopArtist(ctx, token),
+	)
+	fmt.Println("1")
+
+	// Retrieve the user's profile data
+	// Note: GetUserData does not return an error.
+	userProfileInfo := GetUserData(ctx, token)
+	fmt.Println("2")
+
+	// Create a new playlist for the user. This function returns an error, so we handle it.
+	playlistStatus, err := CreatePlaylist(ctx, token, userProfileInfo.SpotifyID, PlayListName, PlaylistDescription)
+	handleError(err, "Failed to Generate new Playlist on user's Profile")
+	fmt.Println("3")
+
+	// Build a new music playlist from the returned status
+	newPlaylist := NewMusicPlaylist(playlistStatus.URI)
+	fmt.Println("4")
+
+	// Construct the final DB document (UserMongoDocument)
+	// combining user profile data, music information, and the playlist.
+	// NOTE: You may also want to store the playlist ID (playlistStatus.ID) if needed.
+	return NewDBDocument(*userProfileInfo, *userMusicInfo, *newPlaylist), nil
 }

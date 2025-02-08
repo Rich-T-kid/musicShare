@@ -1,9 +1,19 @@
 package spotwrapper
 
+import "time"
+
+type UserMongoDocument struct {
+	UserProfileResponse UserProfileResponse `json:"user_profile_response"`
+	UserMusicInfo       UserMusicInfo       `json:"user_music_info"`
+	MusicSharePlaylist  MusicSharePlaylist  `json:"music_share_playlist"`
+	CreatedAt           time.Time           `json:"created_at"`
+	Updated             time.Time           `json:"updated"`
+}
 type SignIn struct {
 	Username string `json:"username"`
 }
 
+// Only being used to pass username through context.context throughout the life cycle of the request
 type UsernameKey struct{}
 
 /*
@@ -480,4 +490,14 @@ type SpotifyTrackResponse struct {
 	Href     string      `json:"href"`
 	Next     string      `json:"next"`
 	Previous interface{} `json:"previous"`
+}
+type spotifyURI struct {
+	Song string    `json:"song_uri`
+	Date time.Time `json:"date"`
+}
+
+type MusicSharePlaylist struct {
+	Name        string       `json:"name"`
+	PlaylistURI string       `json:"playlist_uri"`
+	Songs       []spotifyURI `json:"songs"` // filled with
 }
