@@ -32,7 +32,7 @@ var (
 )
 
 var (
-	logger = logs.NewLogger()
+	logger = logs.NewLogger() //TODO: Implementing logging in here everywhere
 )
 
 /*
@@ -84,8 +84,12 @@ func cloneRequest(req *http.Request) (*http.Request, error) {
 }
 
 /* retrys request up to {maxTries} times and returns a copy of the body in bytes*/
-func (o *Overload) RetryRequest(ctx context.Context, req *http.Request, userid string) (*http.Response, error) {
+func (o *Overload) RetryRequest(ctx context.Context, req *http.Request) (*http.Response, error) {
 	delay := o.defaultDelay
+	userid, ok := ctx.Value(UsernameKey{}).(string)
+	if !ok {
+		return nil, fmt.Errorf("UserName was not properly set in the context.context \n")
+	}
 	// returns true if access Token is valid. if false generate new one. if error occures as in cant generate a valid access token then return error
 	// this is so that we dont have to deal with handling a 401 response code, if the access token is valid here it will remain valid for the duration of the retrys below
 	authHeader := req.Header.Get("Authorization")
