@@ -4,6 +4,8 @@ type SignIn struct {
 	Username string `json:"username"`
 }
 
+type UsernameKey struct{}
+
 /*
 Authentication Error Object
 Whenever the application makes requests related to authentication or authorization to Web API,

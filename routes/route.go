@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -28,7 +27,7 @@ var (
 	randomString  = "ChangeLater"
 	IDComboHash64 = "OGIyNzdmYjE2NzIxNDQwMWJiOTQ4NmU1M2QxODM5NjM6ZGI5NzY3MTc5MWVjNDYxZjkyMmM1MjM1OWQ4OWNkZGY="
 	userNamecache = sw.NewCache[string, string]()
-	logger        = logs.NewLogger()
+	logger        = logs.NewLogger() //TODO:
 	Month         = 720
 )
 
@@ -103,11 +102,13 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("key -> %s did not already exist Setting it now\n", key)
 		cache.Set(ctx, key, "1", Month)
 	}
+
+	ctx = context.WithValue(ctx, sw.UsernameKey{}, username) // Username is passed along to all request made here
 	fmt.Printf("did not set key %s this time\n", key)
-	// store users access and refresh tokens in a reddis  HSET
 	cache.StoreTokens(username, tokens.AccessToken, tokens.Refresh)
-	//Need to define what info we want to load from spotify on login from use
 	fmt.Println("User")
+	res := sw.GetUserData(ctx, tokens.AccessToken)
+	fmt.Println(res)
 	//res := sw.NewUserProfile(tokens.AccessToken, username)
 	// save to MOngo DB here later
 	http.Redirect(w, r, "/loveShare", http.StatusSeeOther)
@@ -177,9 +178,6 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// workig with song of the day stuff. least important right now
-func Song(w http.ResponseWriter, r *http.Request) {}
-
 // home page -> http request to /signIn if 200 response -> home page/login with spotify, if 200 response -> redirect page where song of the day is
 
 func Test(w http.ResponseWriter, r *http.Request) {
@@ -238,45 +236,6 @@ func getToken(code string) (sw.TokenResponse, error) {
 }
 
 // just returns a access token and that tokens expiration time
-func refresh(refreshToken string) (string, int, error) {
-	var endpoint = "https://accounts.spotify.com/api/token"
-
-	// Encode clientID:clientSecret in Base64
-	//idSecretCombo := fmt.Sprintf("%s:%s", clientID, clientSecrete)
-	headerAuth := IDComboHash64 //base64.StdEncoding.EncodeToString([]byte(idSecretCombo))
-
-	// Form data
-	data := url.Values{}
-	data.Set("grant_type", "refresh_token")
-	data.Set("refresh_token", refreshToken)
-
-	// Create request
-	req, err := http.NewRequest("POST", endpoint, bytes.NewBufferString(data.Encode()))
-	if err != nil {
-		return "", 0, fmt.Errorf("error creating request: %w", err)
-	}
-
-	// Set headers
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Authorization", "Basic "+headerAuth)
-
-	// Make request
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", 0, fmt.Errorf("error making request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Decode response
-	var Response sw.RefreshResponse
-	err = json.NewDecoder(resp.Body).Decode(&Response)
-	if err != nil {
-		return "", 0, fmt.Errorf("error decoding response: %w", err)
-	}
-
-	return Response.AccessToken, Response.Expir, nil
-}
 
 type Response struct {
 	Message string `json:"message"`
