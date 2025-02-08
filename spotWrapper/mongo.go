@@ -117,7 +117,23 @@ func (s *spotish[T, V]) GetTokens(userID string) (string, string, error) {
 	return accessToken, refreshToken, nil
 }
 
+// TODO: Implement all of this. In mongo DB fr this time
 // MongoDb  Implementation
 func SaveUser() {
 	fmt.Println("Prentending to save user info ->  implement later")
 }
+
+func SubmitComment(songid spotifyURI, comment UserComments) error { return nil }
+func GetComments(songid spotifyURI, limit, offset int) []UserComments {
+	var empty []UserComments
+	return empty
+}
+
+func UpdateComment() {}
+
+func GetComment(commentID string) UserComments {
+	var empty UserComments
+	return empty
+}
+
+func DeleteComment(commentID string) error { return nil }

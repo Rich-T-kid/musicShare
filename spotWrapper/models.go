@@ -6,6 +6,9 @@ type UserMongoDocument struct {
 	UserProfileResponse UserProfileResponse `json:"user_profile_response"`
 	UserMusicInfo       UserMusicInfo       `json:"user_music_info"`
 	MusicSharePlaylist  MusicSharePlaylist  `json:"music_share_playlist"`
+	Comments            []UserComments      `json:"use_comments"`
+	LikedSongs          []spotifyURI        `json:"liked_songs"`
+	DislikedSongs       []spotifyURI        `json:"disliked_songs"`
 	CreatedAt           time.Time           `json:"created_at"`
 	Updated             time.Time           `json:"updated"`
 }
@@ -492,7 +495,7 @@ type SpotifyTrackResponse struct {
 	Previous interface{} `json:"previous"`
 }
 type spotifyURI struct {
-	Song string    `json:"song_uri`
+	Song string    `json:"songID`
 	Date time.Time `json:"date"`
 }
 
@@ -500,4 +503,25 @@ type MusicSharePlaylist struct {
 	Name        string       `json:"name"`
 	PlaylistURI string       `json:"playlist_uri"`
 	Songs       []spotifyURI `json:"songs"` // filled with
+}
+
+type UserComments struct {
+	Username string `json:"username"`
+	Rating   uint8  `json:"rating"` // out of 5
+	Review   string `json:"review"`
+	SongID   string `songID`
+}
+
+type CommentsRequest struct {
+	SongURI  string       `json:"songID"`
+	UserResp UserComments `json:"userComment"`
+	// later on we are going to capture states about the users listening experience as well
+	// for ex. (In one struct)
+	/*
+		| Time Played     | Tracks how long the song was played |
+		| Pauses         | Counts number of times paused |
+		| Skips         | Tracks if the user skipped the song |
+		| Replays         | Number of times the song was replayed |
+		| Total Time Listened | Measures overall listening time |
+	*/
 }
