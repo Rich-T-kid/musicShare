@@ -129,11 +129,14 @@ func GetComments(songid spotifyURI, limit, offset int) []UserComments {
 	return empty
 }
 
-func UpdateComment() {}
+// find old and update it with new comment. if old cant be found return error
+func UpdateComment(oldComment string, new UserComments) (bool, error) {
+	return true, nil
+	return nil
+}
 
-func GetComment(commentID string) UserComments {
-	var empty UserComments
-	return empty
+func GetComment(commentID string) *UserComments {
+	return nil
 }
 
 func DeleteComment(commentID string) error { return nil }
