@@ -20,7 +20,6 @@ type SignIn struct {
 type UsernameKey struct{}
 
 /*
-Authentication Error Object
 Whenever the application makes requests related to authentication or authorization to Web API,
 such as retrieving an access token or refreshing an access token, the error response follows RFC 6749 on the OAuth 2.0 Authorization Framework.
 */
