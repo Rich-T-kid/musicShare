@@ -54,7 +54,7 @@ func refreshEndPoint(refreshToken string) (*RefreshResponse, error) {
 
 	// ✅ Handle API errors like invalid refresh tokens
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("Spotify API returned status %d: %v", resp.StatusCode, response)
+		return nil, fmt.Errorf("spotify api returned status %d: %v", resp.StatusCode, response)
 	}
 
 	return &response, nil
@@ -84,4 +84,13 @@ func generateAccessToken(refreshT string) string {
 		log.Fatal(err)
 	}
 	return RefreshResponse.AccessToken
+}
+
+func contains(matches []string, word string) bool {
+	for _, words := range matches {
+		if words == word {
+			return true
+		}
+	}
+	return false
 }

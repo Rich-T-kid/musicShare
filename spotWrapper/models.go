@@ -3,14 +3,16 @@ package spotwrapper
 import "time"
 
 type UserMongoDocument struct {
-	UserProfileResponse UserProfileResponse `json:"user_profile_response"`
-	UserMusicInfo       UserMusicInfo       `json:"user_music_info"`
-	MusicSharePlaylist  MusicSharePlaylist  `json:"music_share_playlist"`
-	Comments            []UserComments      `json:"use_comments"`
-	LikedSongs          []spotifyURI        `json:"liked_songs"`
-	DislikedSongs       []spotifyURI        `json:"disliked_songs"`
-	CreatedAt           time.Time           `json:"created_at"`
-	Updated             time.Time           `json:"updated"`
+	UUID                string              `json:"ID" bson:"uuid"`
+	UserProfileResponse UserProfileResponse `json:"user_profile_response" bson:"user_profile_response"`
+	UserMusicInfo       UserMusicInfo       `json:"user_music_info" bson:"user_music_info"`
+	MusicSharePlaylist  MusicSharePlaylist  `json:"music_share_playlist" bson:"music_share_playlist"`
+	Comments            []UserComments      `json:"use_comments" bson:"use_comments"`
+	LikedSongs          []spotifyURI        `json:"liked_songs" bson:"liked_songs"`
+	DislikedSongs       []spotifyURI        `json:"disliked_songs" bson:"disliked_songs"`
+	Listened            []spotifyURI        `json:"listened" bson:"listened"`
+	CreatedAt           time.Time           `json:"created_at" bson:"created_at"`
+	Updated             time.Time           `json:"updated" bson:"updated"`
 }
 type SignIn struct {
 	Username string `json:"username"`
@@ -504,13 +506,6 @@ type MusicSharePlaylist struct {
 	Songs       []spotifyURI `json:"songs"` // filled with
 }
 
-type UserComments struct {
-	Username string `json:"username"`
-	Rating   uint8  `json:"rating"` // out of 5
-	Review   string `json:"review"`
-	SongID   string `songID`
-}
-
 type CommentsRequest struct {
 	SongURI  string       `json:"songID"`
 	UserResp UserComments `json:"userComment"`
@@ -523,4 +518,19 @@ type CommentsRequest struct {
 		| Replays         | Number of times the song was replayed |
 		| Total Time Listened | Measures overall listening time |
 	*/
+}
+
+type SongTypes struct {
+	SongURI       string         `json:"songURI" bson:"songURI"`
+	Comments      []UserComments `json:"comments" bson:"comments"`
+	AlternateName []string       `json:"alternateName" bson:"alternateName"`
+	UUID          string         `json:"ID" bson:"uuid"`
+}
+
+type UserComments struct {
+	Username string `json:"username" bson:"username"`
+	Rating   uint8  `json:"rating" bson:"rating"` // out of 5
+	Review   string `json:"review" bson:"review"`
+	SongID   string `json:"songID" bson:"songID"`
+	UUID     string `json:"ID" bson:"uuid"`
 }
