@@ -3,9 +3,12 @@ package spotwrapper
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/go-redis/redis"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // cache interface defining methods for caching
@@ -119,6 +122,116 @@ func (s *spotish[T, V]) GetTokens(userID string) (string, string, error) {
 
 // TODO: Implement all of this. In mongo DB fr this time
 // MongoDb  Implementation
+// functions below should rely on this interface for now
+// seperate ticket to imlement all of this
+type DocumentStore interface {
+	// Connectivity Check
+	Connected() bool // Pings the database and returns whether it's connected.
+	UserStore
+	SongStore
+	CommentStore
+	// CRUD Operations
+}
+type UserStore interface {
+	GetUserByID(userID string) (*UserMongoDocument, error)
+	SaveUser(user *UserMongoDocument) error
+	GetUserSongs(userID string) (*SongTypes, error)
+	GetUserComments(userID string) ([]UserComments, error)
+}
+
+// TODO: Change this after merge
+type SongStore interface {
+	GetSongByID(songID string) (*SongTypes, error)
+	InsertSong(song *SongTypes) error
+	UpdateSong(song *SongTypes) error
+	DeleteSong(songID string) error
+}
+type CommentStore interface {
+	SubmitComment(songID spotifyURI, comment UserComments) error
+	GetComments(songID spotifyURI, limit, offset int) ([]UserComments, error)
+	UpdateComment(oldComment string, newComment UserComments) (bool, error)
+	DeleteComment(commentID string) error
+	GetComment(commentID string) (*UserComments, error)
+}
+
+/*
+Mongo DB implementation below
+*/
+func newDocumentStore() DocumentStore {
+	// Define MongoDB connection URI (matches Docker container settings)
+	mongoURI := "mongodb://admin:secretpassword@localhost:27017/"
+
+	// Set client options
+	clientOptions := options.Client().ApplyURI(mongoURI)
+
+	// Establish connection
+	client, err := mongo.Connect(context.TODO(), clientOptions)
+	if err != nil {
+		log.Fatalf("Failed to connect to MongoDB: %v", err)
+	}
+
+	// Ping the database to check if it's reachable
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err = client.Ping(ctx, nil)
+	if err != nil {
+		log.Fatalf("MongoDB connection test failed: %v", err)
+	}
+
+	fmt.Println("✅ Successfully connected to MongoDB")
+	return &MongoDBStore{client: client}
+}
+
+type MongoDBStore struct {
+	client *mongo.Client
+}
+
+func (m *MongoDBStore) Connected() bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err := m.client.Ping(ctx, nil)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+// Implement UserStore methods
+func (m *MongoDBStore) GetUserByID(userID string) (*UserMongoDocument, error) { return nil, nil }
+func (m *MongoDBStore) SaveUser(user *UserMongoDocument) error                { return nil /* implementation */ }
+func (m *MongoDBStore) GetUserSongs(userID string) (*SongTypes, error) {
+	return nil, nil /* implementation */
+}
+func (m *MongoDBStore) GetUserComments(userID string) ([]UserComments, error) {
+	return nil, nil /* implementation */
+}
+
+// Implement SongStore methods
+func (m *MongoDBStore) GetSongByID(songID string) (*SongTypes, error) {
+	return nil, nil /* implementation */
+}
+func (m *MongoDBStore) InsertSong(song *SongTypes) error { return nil /* implementation */ }
+func (m *MongoDBStore) UpdateSong(song *SongTypes) error { return nil /* implementation */ }
+func (m *MongoDBStore) DeleteSong(songID string) error   { return nil /* implementation */ }
+
+// Implement CommentStore methods
+func (m *MongoDBStore) SubmitComment(songID spotifyURI, comment UserComments) error {
+	return nil /* implementation */
+}
+func (m *MongoDBStore) GetComments(songID spotifyURI, limit, offset int) ([]UserComments, error) {
+	return nil, nil /* implementation */
+}
+func (m *MongoDBStore) UpdateComment(oldComment string, newComment UserComments) (bool, error) {
+	return false, nil /* implementation */
+}
+func (m *MongoDBStore) DeleteComment(commentID string) error { return nil /* implementation */ }
+func (m *MongoDBStore) GetComment(commentID string) (*UserComments, error) {
+	return nil, nil /* implementation */
+}
+
+/*
+End of mongoDB implementation
+*/
 func SaveUser() {
 	fmt.Println("Prentending to save user info ->  implement later")
 }
@@ -141,9 +254,9 @@ func GetComment(commentID string) *UserComments {
 func DeleteComment(commentID string) error { return nil }
 
 type SongTypes struct {
-	AllSongs      []spotifyURI // all songs
-	likedSongs    []spotifyURI // positively rated songs 3/5 <= out of 5
-	dislikedSongs []spotifyURI // less than 2/5 out of  5
+	AllSongs      []spotifyURI `json:"songs"`          // all songs
+	LikedSongs    []spotifyURI `json:"liked_songs"`    /// positively rated songs 3/5 <= out of 5
+	DislikedSongs []spotifyURI `json:"disliked_songs"` /// less than 2/5 out of  5
 }
 
 // if any of these return nil it means it wasnt found
