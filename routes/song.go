@@ -63,17 +63,16 @@ func CommentsID(w http.ResponseWriter, r *http.Request) {
 		comment := sw.GetComment(commentID)
 		if comment == nil { // doesnt exist
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(comment)
+			w.Write([]byte(fmt.Sprintf("comment with id %s not found", commentID)))
 		}
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(comment)
-		fmt.Println("")
 	case "PUT":
 		var newComment sw.UserComments
 		bodyBytes, err := io.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(fmt.Sprintf("Could not read request body. Ensure input body matches api spec")))
+			w.Write([]byte("Could not read request body. Ensure input body matches api spec"))
 			logger.Warning(fmt.Sprintf("Error decoding requst body %e", err))
 			return
 
@@ -112,9 +111,17 @@ func CommentsID(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["user_id"]
 	switch r.Method {
 	case "GET":
-		fmt.Println("")
+		UserDoc, err := sw.GetUserDocument(userID)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(fmt.Sprintf("Ensure that a valid userID is pass into the url. %s resulted in this error: %e", userID, err)))
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(UserDoc)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte(fmt.Sprintf("Method %s is not allowed", r.Method)))
@@ -122,9 +129,17 @@ func UserID(w http.ResponseWriter, r *http.Request) {
 
 }
 func UserSongs(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["user_id"]
 	switch r.Method {
 	case "GET":
-		fmt.Println("")
+		SongTypes, err := sw.GetUserSongs(userID)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(fmt.Sprintf("Ensure that a valid userID is pass into the url. %s resulted in this error: %e", userID, err)))
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(SongTypes)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte(fmt.Sprintf("Method %s is not allowed", r.Method)))
@@ -132,8 +147,17 @@ func UserSongs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func UserComments(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["user_id"]
 	switch r.Method {
 	case "GET":
+		Comments, err := sw.GetUserComments(userID)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(fmt.Sprintf("Ensure that a valid userID is pass into the url. %s resulted in this error: %e", userID, err)))
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(Comments)
 		fmt.Println("")
 
 	default:

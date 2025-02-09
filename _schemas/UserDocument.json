@@ -1,0 +1,82 @@
+{
+  "id":"string",
+  "UserInfo": {
+    "country": "string",
+    "display_name": "string",
+    "email": "string",
+    "id": "string"
+  },
+  "UserMusicInfo": {
+    "FollowedArtist": [
+      {
+        "name": "string",
+        "Spotify": "string",
+        "genres": [
+          "melodic rap"
+        ],
+        "uri": "spotify:artist:<SpotifyID>"
+      }
+    ],
+    "TopTracks": [
+      {
+        "TopAlbums": [
+          {
+            "Artist": "spotifyURI",
+            "Name": "artistName",
+            "AlbumLink": "SpotifyLinks",
+            "AlbumURI": "string",
+            "AlbumID": "ID",
+            "AlbumImage": {
+              "url": "link"
+            },
+            "AlbumName": "string",
+            "totalTracks": 10,
+            "release_date": "2024-06-14"
+          }
+        ],
+        "TopSinglesTracks": [
+          {
+            "Artist": "spotifyURI",
+            "Name": "artistName",
+            "trackLink": "Spotifylink",
+            "TrackName": "string",
+            "release_date": "2023-07-07"
+          }
+        ]
+      }
+    ],
+    "TopsArtist": [
+      {
+        "name": "string",
+        "uri": "spotify:artist:5tQMB0cuNXdCtzovGt55uD",
+        "genres": [
+          "cloud rap"
+        ],
+        "ArtistPhoto": {
+          "url": "string"
+        }
+      }
+    ]
+  },
+  "MusicSharePlaylist": {
+    "playlistName": "MusicShareTopSongs",
+    "Songs": [
+      {
+        "songID": "date"
+      }
+    ]
+  },
+  "comments":[{
+  "username": "JohnDoe",
+  "rating": 5,
+  "review": "This song is amazing! Highly recommend it.",
+  "songID":"spotify:track:79rneIpoGKwhqE1MSaw4Ls"
+},{
+  "username": "jakePaul",
+  "rating": 2,
+  "review": "absoluteTrash",
+  "songID":"spotify:track:79rneIpoGKwhqE1MSaw4Ls"
+}],
+"likedSongs": ["SpotifyID","SpotifyID","SpotifyID","SpotifyID"],
+  "dislikedSongs":["SpotifyID","SpotifyID","SpotifyID","SpotifyID"]
+}

@@ -132,7 +132,6 @@ func GetComments(songid spotifyURI, limit, offset int) []UserComments {
 // find old and update it with new comment. if old cant be found return error
 func UpdateComment(oldComment string, new UserComments) (bool, error) {
 	return true, nil
-	return nil
 }
 
 func GetComment(commentID string) *UserComments {
@@ -140,3 +139,14 @@ func GetComment(commentID string) *UserComments {
 }
 
 func DeleteComment(commentID string) error { return nil }
+
+type SongTypes struct {
+	AllSongs      []spotifyURI // all songs
+	likedSongs    []spotifyURI // positively rated songs 3/5 <= out of 5
+	dislikedSongs []spotifyURI // less than 2/5 out of  5
+}
+
+// if any of these return nil it means it wasnt found
+func GetUserDocument(userid string) (*UserMongoDocument, error) { return nil, nil }
+func GetUserSongs(userid string) (*SongTypes, error)            { return nil, nil }
+func GetUserComments(userid string) ([]UserComments, error)     { return nil, nil }
