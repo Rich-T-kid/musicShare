@@ -1,8 +1,20 @@
 package spotwrapper
 
+import "time"
+
+type UserMongoDocument struct {
+	UserProfileResponse UserProfileResponse `json:"user_profile_response"`
+	UserMusicInfo       UserMusicInfo       `json:"user_music_info"`
+	MusicSharePlaylist  MusicSharePlaylist  `json:"music_share_playlist"`
+	CreatedAt           time.Time           `json:"created_at"`
+	Updated             time.Time           `json:"updated"`
+}
 type SignIn struct {
 	Username string `json:"username"`
 }
+
+// Only being used to pass username through context.context throughout the life cycle of the request
+type UsernameKey struct{}
 
 /*
 Authentication Error Object
@@ -179,6 +191,11 @@ type UserProfileResponse struct {
 	Country     string `json:"country"`
 	DisplayName string `json:"display_name"`
 	Email       string `json:"email"`
+	Images      []struct {
+		//Height int    `json:"height"`
+		URL string `json:"url"`
+		//Width  int    `json:"width"`
+	} `json:"images"`
 	//ExplicitContent struct {
 	//	FilterEnabled bool `json:"filter_enabled"`
 	//	FilterLocked  bool `json:"filter_locked"`
@@ -191,7 +208,7 @@ type UserProfileResponse struct {
 	//	Total int         `json:"total"`
 	//} `json:"followers"`
 	//Href    string        `json:"href"`
-	ID string `json:"id"`
+	SpotifyID string `json:"id"`
 	///Images  []interface{} `json:"images"`
 	//Product string        `json:"product"`
 	//Type    string        `json:"type"`
@@ -220,7 +237,7 @@ type Image struct {
 }
 type UserMusicInfo struct {
 	FollowedArtist []FollowedArtist `json:"FollowedArtist"` // finsihed
-	TopTracks      []UserTopTrack   `json:"TopTracks"`      // Finished
+	TopTracks      UserTopTrack     `json:"TopTracks"`      // Finished
 	TopsArtist     []UserTopArtist  `json:"TopsArtist"`     // Finished
 }
 type UserTopTrack struct {
@@ -473,4 +490,14 @@ type SpotifyTrackResponse struct {
 	Href     string      `json:"href"`
 	Next     string      `json:"next"`
 	Previous interface{} `json:"previous"`
+}
+type spotifyURI struct {
+	Song string    `json:"song_uri`
+	Date time.Time `json:"date"`
+}
+
+type MusicSharePlaylist struct {
+	Name        string       `json:"name"`
+	PlaylistURI string       `json:"playlist_uri"`
+	Songs       []spotifyURI `json:"songs"` // filled with
 }

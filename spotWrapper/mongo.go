@@ -43,6 +43,7 @@ func (s *spotish[T, V]) Get(ctx context.Context, key string) V {
 	str, err := s.client.Get(key).Result()
 	if err != nil {
 		var zero V
+		fmt.Printf("Get key: %s , Error From cache %e \n ", key, err)
 		return zero
 	}
 
@@ -50,6 +51,7 @@ func (s *spotish[T, V]) Get(ctx context.Context, key string) V {
 	value, ok := any(str).(V)
 	if !ok {
 		var zero V
+		fmt.Printf("Could not convert key %s of value %s to type %v Value of reddis implentation cache", key, str)
 		return zero
 	}
 
@@ -115,6 +117,7 @@ func (s *spotish[T, V]) GetTokens(userID string) (string, string, error) {
 	return accessToken, refreshToken, nil
 }
 
+// MongoDb  Implementation
 func SaveUser() {
 	fmt.Println("Prentending to save user info ->  implement later")
 }

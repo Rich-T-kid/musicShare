@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 )
 
 // handles the API related stuff
@@ -18,6 +19,9 @@ import (
 var (
 	proxy = newOverloader()
 )
+
+const PlayListName = "Rhythm Reflections"
+const PlaylistDescription = "This playlist is your personal musical corner, capturing every track that resonates with you. Each like you give adds a new gem, building a reflection of your evolving taste. Whether it’s a dance anthem or a calming instrumental, watch your collection grow with every fresh discovery. Let these melodies spark joyful memories and inspire new favorites. Enjoy an ever-evolving soundtrack that tells your story, one beloved track at a time!"
 
 // FetchSpotifyTop fetches top artists or tracks from Spotify API
 func FetchSpotifyTop(ctx context.Context, userid, accessToken, dataType string) (SpotifyTopResponse, error) {
@@ -38,9 +42,8 @@ func FetchSpotifyTop(ctx context.Context, userid, accessToken, dataType string) 
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
 	// Send request with timeout
-	resp, err := proxy.RetryRequest(ctx, req, userid)
+	resp, err := proxy.RetryRequest(ctx, req)
 	if err != nil {
-		fmt.Println("1")
 		return nil, fmt.Errorf("error making request: %w", err)
 	}
 	defer resp.Body.Close()
@@ -71,7 +74,7 @@ func FetchSpotifyTop(ctx context.Context, userid, accessToken, dataType string) 
 // Helper function to handle errors consistently
 func handleError(err error, context string) {
 	if err != nil {
-		log.Fatalf("Error in %s: %v", context, err)
+		log.Fatalf("Error in %s: ->>> %v", context, err)
 	}
 }
 
@@ -85,8 +88,10 @@ func checkResponseStatusCode(resp *http.Response, validCodes []int) error {
 	return fmt.Errorf("unexpected status code %d", resp.StatusCode)
 }
 
+// Have the overloader perform all the request after you test each method
 // Function to get user data and unmarshal it into the provided struct
-func getUserData(token string, dest *UserResponse) {
+// Works
+func GetUserData(ctx context.Context, token string) *UserProfileResponse {
 	// Hardcode the endpoint for testing purposes
 	endpoint := "https://api.spotify.com/v1/me"
 
@@ -101,26 +106,22 @@ func getUserData(token string, dest *UserResponse) {
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	// Execute the request
-	resp, err := http.DefaultClient.Do(req)
+
+	resp, err := proxy.RetryRequest(ctx, req) //http.DefaultClient.Do(req)
 	handleError(err, "http.DefaultClient.Do")
 	defer resp.Body.Close()
-
-	// Check for expired access token
-	if resp.StatusCode == 401 {
-		log.Fatal("Access Token has expired. You need to grab a new one.")
-	}
 
 	// Validate the response status code
 	err = checkResponseStatusCode(resp, []int{200})
 	handleError(err, "checkResponseStatusCode")
-
 	// Read the response body
 	bodyBytes, err := io.ReadAll(resp.Body)
 	handleError(err, "io.ReadAll")
-
 	// Unmarshal the response body into the provided struct
-	err = json.Unmarshal(bodyBytes, dest)
+	var dest UserProfileResponse
+	err = json.Unmarshal(bodyBytes, &dest)
 	handleError(err, "json.Unmarshal")
+	return &dest
 }
 
 // ConvertToFollowedArtists converts SpotArtist struct to FollowedArtist structs
@@ -155,7 +156,7 @@ func ConvertToFollowedArtists(spotArtists *SpotArtist) []FollowedArtist {
 }
 
 // Function to get artist information and convert it to FollowedArtist structs
-func ArtistInfo(token string, dest *SpotArtist) []FollowedArtist {
+func ArtistInfo(ctx context.Context, token string) []FollowedArtist {
 	// Hardcode the endpoint for testing purposes
 	endpoint := "https://api.spotify.com/v1/me/following?type=artist"
 
@@ -170,7 +171,7 @@ func ArtistInfo(token string, dest *SpotArtist) []FollowedArtist {
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	// Execute the request
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := proxy.RetryRequest(ctx, req)
 	handleError(err, "http.DefaultClient.Do")
 	defer resp.Body.Close()
 
@@ -186,17 +187,17 @@ func ArtistInfo(token string, dest *SpotArtist) []FollowedArtist {
 	// Read the response body
 	bodyBytes, err := io.ReadAll(resp.Body)
 	handleError(err, "io.ReadAll")
-
+	var dest SpotArtist
 	// Unmarshal the response body into the provided struct
-	err = json.Unmarshal(bodyBytes, dest)
+	err = json.Unmarshal(bodyBytes, &dest)
 	handleError(err, "json.Unmarshal")
 
 	// Return the converted FollowedArtist structs
-	return ConvertToFollowedArtists(dest)
+	return ConvertToFollowedArtists(&dest)
 }
 
 // Function to create a playlist using the Spotify API
-func CreatePlaylist(token, spotifyID, playlistName, description string) (PlaylistResponse, error) {
+func CreatePlaylist(ctx context.Context, token, spotifyID, playlistName, description string) (PlaylistResponse, error) {
 	// Hardcode the endpoint for testing purposes
 	endpoint := "https://api.spotify.com/v1/users/" + spotifyID + "/playlists"
 
@@ -223,7 +224,7 @@ func CreatePlaylist(token, spotifyID, playlistName, description string) (Playlis
 	req.Header.Set("Content-Type", "application/json")
 
 	// Execute the request
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := proxy.RetryRequest(ctx, req)
 	handleError(err, "http.DefaultClient.Do")
 	defer resp.Body.Close()
 
@@ -232,7 +233,7 @@ func CreatePlaylist(token, spotifyID, playlistName, description string) (Playlis
 	if err != nil {
 		// If not 201, log the response body for debugging
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		log.Printf("Error response body: %s", string(bodyBytes))
+		logger.Info(fmt.Sprintf("Error response body: %s", string(bodyBytes)))
 		return PlaylistResponse{}, err
 	}
 
@@ -250,7 +251,7 @@ func CreatePlaylist(token, spotifyID, playlistName, description string) (Playlis
 }
 
 // Function to add a track to a playlist
-func AddToPlaylist(token, songURI, playlistID string) bool {
+func AddToPlaylist(ctx context.Context, token, songURI, playlistID string) bool {
 	// Hardcode the endpoint for testing purposes
 	endpoint := fmt.Sprintf("https://api.spotify.com/v1/playlists/%s/tracks", playlistID)
 
@@ -276,7 +277,7 @@ func AddToPlaylist(token, songURI, playlistID string) bool {
 	req.Header.Set("Content-Type", "application/json")
 
 	// Execute the request
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := proxy.RetryRequest(ctx, req)
 	handleError(err, "http.DefaultClient.Do")
 	defer resp.Body.Close()
 
@@ -285,17 +286,20 @@ func AddToPlaylist(token, songURI, playlistID string) bool {
 	if err != nil {
 		// Log any error response
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		log.Printf("Error response body: %s", string(bodyBytes))
+		logger.Info(fmt.Sprintf("Error response body: %s", string(bodyBytes)))
 		log.Fatal(err)
 	}
 
 	// Return true if successful
 	return true
 }
-func addtoPlaylist(endpoint, token, songURI, playlistID string) bool {
+
+// slight variation to the above method. Only difference is that the song URI doesnt need to have the spotify:track: prefix
+// more than likely will remove
+func addtoPlaylist(ctx context.Context, endpoint, token, songURI, playlistID string) bool {
 	// Ensure valid inputs
 	if endpoint == "" || token == "" || songURI == "" || playlistID == "" {
-		log.Println("Error: Missing required parameters (endpoint, token, songURI, playlistID)")
+		logger.Info("Error: Missing required parameters (endpoint, token, songURI, playlistID)")
 		return false
 	}
 
@@ -311,14 +315,14 @@ func addtoPlaylist(endpoint, token, songURI, playlistID string) bool {
 	// Marshal the body into JSON format
 	jsonData, err := json.Marshal(body)
 	if err != nil {
-		log.Printf("Error marshalling request body: %v", err)
+		logger.Info(fmt.Sprintf("Error marshalling request body: %v", err))
 		return false
 	}
 
 	// Create the HTTP request
 	req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
-		log.Printf("Error creating HTTP request: %v", err)
+		logger.Info(fmt.Sprintf("Error marshalling request body: %v", err))
 		return false
 	}
 
@@ -327,18 +331,12 @@ func addtoPlaylist(endpoint, token, songURI, playlistID string) bool {
 	req.Header.Set("Content-Type", "application/json")
 
 	// Execute the request
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := proxy.RetryRequest(ctx, req)
 	if err != nil {
-		log.Printf("Error executing HTTP request: %v", err)
+		logger.Route(fmt.Sprintf("Error executing HTTP request, route %s  error: %v", resp.Request.URL.String(), err))
 		return false
 	}
 	defer resp.Body.Close()
-
-	// Handle response status codes
-	if resp.StatusCode == 401 {
-		log.Println("Error: Access Token has expired. Please grab a new one.")
-		return false
-	}
 
 	if resp.StatusCode == 201 {
 		log.Println("Track added to playlist successfully.")
@@ -348,13 +346,13 @@ func addtoPlaylist(endpoint, token, songURI, playlistID string) bool {
 	// Handle other unexpected status codes
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("Error reading response body: %v", err)
+		logger.Info(fmt.Sprintf("Error reading response body: %v", err))
 		return false
 	}
 
 	// Log response body and status code for debugging purposes
-	log.Printf("Unexpected status code: %d", resp.StatusCode)
-	log.Printf("Response body: %s", string(bodyBytes))
+	log.Printf("Unexpected status code: %d\n", resp.StatusCode)
+	log.Printf("Response body: %s\n", string(bodyBytes))
 
 	return false
 }
@@ -383,7 +381,7 @@ func parseArtist(data SpotifyTopArtistResponse) []UserTopArtist {
 }
 
 // Function to fetch and process the user's top artists
-func TopArtist(token string) []UserTopArtist {
+func TopArtist(ctx context.Context, token string) []UserTopArtist {
 	endpoint := "https://api.spotify.com/v1/me/top/artists"
 	if token == "" {
 		handleError(fmt.Errorf("access token is empty"), "TopArtist")
@@ -397,7 +395,7 @@ func TopArtist(token string) []UserTopArtist {
 	for {
 		// Check if we've reached the limit for the number of requests
 		if pageCount >= limit {
-			log.Println("Reached the request limit, stopping further requests.")
+			log.Printf("Reached the request limit of %d pages, stopping further requests.\n", limit)
 			break
 		}
 
@@ -407,7 +405,7 @@ func TopArtist(token string) []UserTopArtist {
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		// Execute the request
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := proxy.RetryRequest(ctx, req)
 		handleError(err, "http.DefaultClient.Do")
 		defer resp.Body.Close()
 
@@ -479,7 +477,7 @@ func parseTracks(response *SpotifyTrackResponse, topTrack *UserTopTrack) {
 	}
 }
 
-func TopTracks(token string) UserTopTrack {
+func TopTracks(ctx context.Context, token string) UserTopTrack {
 	endpoint := "https://api.spotify.com/v1/me/top/tracks"
 	var result UserTopTrack
 	limit := 50 // Set limit to 50 to fetch 50 items per page (Spotify API max)
@@ -496,14 +494,9 @@ func TopTracks(token string) UserTopTrack {
 		req.URL.RawQuery = q.Encode()
 
 		// Execute the request
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := proxy.RetryRequest(ctx, req)
 		handleError(err, "http.DefaultClient.Do")
 		defer resp.Body.Close()
-
-		// Check for expired access token
-		if resp.StatusCode == 401 {
-			log.Fatal("Access Token has expired. You need to grab a new one.")
-		}
 
 		// Validate the response status code
 		err = checkResponseStatusCode(resp, []int{200})
@@ -534,4 +527,69 @@ func TopTracks(token string) UserTopTrack {
 	// Debug: Print the length of TopAlbums and TopSingles
 
 	return result
+}
+
+func NewDocument(followed []FollowedArtist, topTracks UserTopTrack, UserFavorites []UserTopArtist) *UserMusicInfo {
+	return &UserMusicInfo{
+		FollowedArtist: followed,
+		TopTracks:      topTracks,
+		TopsArtist:     UserFavorites,
+	}
+}
+
+// Starts off as empty doesnt need to be allocated right now
+func NewMusicPlaylist(playlistID string) *MusicSharePlaylist {
+	return &MusicSharePlaylist{
+		Name:        PlayListName,
+		PlaylistURI: playlistID,
+		Songs:       make([]spotifyURI, 0),
+	}
+}
+func NewDBDocument(userProfile UserProfileResponse, userMusicInfo UserMusicInfo, playlist MusicSharePlaylist) *UserMongoDocument {
+	return &UserMongoDocument{
+		UserProfileResponse: userProfile,
+		UserMusicInfo:       userMusicInfo,
+		MusicSharePlaylist:  playlist,
+		CreatedAt:           time.Now(),
+		Updated:             time.Now(),
+	}
+}
+
+// NewUserProfile builds a new user profile document by fetching music data,
+// user data, and creating a new playlist.
+func NewUserProfile(ctx context.Context, token string) (*UserMongoDocument, error) {
+	// Record current time, which can be useful for logging
+	currentTime := time.Now()
+
+	// Retrieve the user ID from context
+	userID, ok := ctx.Value(UsernameKey{}).(string)
+	if !ok {
+		return nil, fmt.Errorf("username was not properly set in the context")
+	}
+	logger.Info(fmt.Sprintf("Finished processing new user %s at %v\n", userID, currentTime))
+
+	// Gather music data from Spotify
+	// Note: These functions (ArtistInfo, TopTracks, TopArtist) do not return errors,
+	// so we call them directly within NewDocument.
+	userMusicInfo := NewDocument(
+		ArtistInfo(ctx, token),
+		TopTracks(ctx, token),
+		TopArtist(ctx, token),
+	)
+
+	// Retrieve the user's profile data
+	// Note: GetUserData does not return an error.
+	userProfileInfo := GetUserData(ctx, token)
+
+	// Create a new playlist for the user. This function returns an error, so we handle it.
+	playlistStatus, err := CreatePlaylist(ctx, token, userProfileInfo.SpotifyID, PlayListName, PlaylistDescription)
+	handleError(err, "Failed to Generate new Playlist on user's Profile")
+
+	// Build a new music playlist from the returned status
+	newPlaylist := NewMusicPlaylist(playlistStatus.URI)
+
+	// Construct the final DB document (UserMongoDocument)
+	// combining user profile data, music information, and the playlist.
+	// NOTE: You may also want to store the playlist ID (playlistStatus.ID) if needed.
+	return NewDBDocument(*userProfileInfo, *userMusicInfo, *newPlaylist), nil
 }

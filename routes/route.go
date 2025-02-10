@@ -1,19 +1,20 @@
 package routes
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/gorilla/mux"
 
+	"loveShare/logs"
 	sw "loveShare/spotWrapper"
 )
 
@@ -27,6 +28,7 @@ var (
 	randomString  = "ChangeLater"
 	IDComboHash64 = "OGIyNzdmYjE2NzIxNDQwMWJiOTQ4NmU1M2QxODM5NjM6ZGI5NzY3MTc5MWVjNDYxZjkyMmM1MjM1OWQ4OWNkZGY="
 	userNamecache = sw.NewCache[string, string]()
+	logger        = logs.NewLogger() //TODO:
 	Month         = 720
 )
 
@@ -34,7 +36,7 @@ var (
 func HomePage(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := template.ParseFiles("templates/login.html")
 	if err != nil {
-		fmt.Println("Error reading template ->>", err)
+		logger.Warning(fmt.Sprintf("Error reading template:  %e", err))
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
 	}
@@ -42,7 +44,7 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 	// Render template without any variables (blank for now)
 	err = tmpl.Execute(w, nil)
 	if err != nil {
-		fmt.Println("Error reading template ->>", err)
+		logger.Warning(fmt.Sprintf("Error Executing template:  %e", err))
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 	}
 
@@ -52,7 +54,7 @@ func RedirectPage(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := template.ParseFiles("templates/index.html")
 	if err != nil {
-		fmt.Println("Error reading template ->>", err)
+		logger.Info(fmt.Sprintf("Error reading template:  %e", err))
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
 	}
@@ -60,7 +62,7 @@ func RedirectPage(w http.ResponseWriter, r *http.Request) {
 	// Render template without any variables (blank for now)
 	err = tmpl.Execute(w, nil)
 	if err != nil {
-		fmt.Println("Error reading template ->>", err)
+		logger.Info(fmt.Sprintf("Error Executing template:  %e", err))
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 	}
 
@@ -79,7 +81,7 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 	spotifyError := QV.Get("error")
 	if spotifyError != "" {
 		http.Error(w, "Error occurred with Spotify login", http.StatusBadRequest)
-		fmt.Println("Spotify callback error:", spotifyError)
+		logger.Critical(fmt.Sprintf("Spotify Returned an error instead of a valid code %e", err))
 		return
 	}
 
@@ -91,36 +93,32 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 	tokens, err := getToken(code)
 	if err != nil {
 		http.Error(w, "Failed to get access token", http.StatusInternalServerError)
-		fmt.Println("Error getting access token:", err)
 		return
 	}
 	ctx := context.Background()
 	cache := userNamecache
 	key := fmt.Sprintf("UniqueUserName:%s", username)
 	if !cache.Exist(ctx, key) {
-		fmt.Printf("key -> %s did not already exist Setting it now\n", key)
 		cache.Set(ctx, key, "1", Month)
 	}
-	fmt.Printf("did not set key %s this time\n", key)
-	// store users access and refresh tokens in a reddis  HSET
+
+	ctx = context.WithValue(ctx, sw.UsernameKey{}, username) // Username is passed along to all request made here
 	cache.StoreTokens(username, tokens.AccessToken, tokens.Refresh)
-	//Need to define what info we want to load from spotify on login from use
-	fmt.Println("User")
-	res, err := sw.FetchSpotifyTop(ctx, username, tokens.AccessToken, "tracks")
-	fmt.Println("Tylers response -> ", res, err)
+	res, err := sw.NewUserProfile(ctx, tokens.AccessToken)
+	if err != nil {
+		log.Fatal(err)
+	}
+	logger.Info(fmt.Sprintf("Profile Response %v", res))
 	encoder := json.NewEncoder(w)
 	encoder.Encode(res)
-	//fmt.Println("Result ,", res)
-	//TODO: this is where id like store the tokens in mongo DB so we dont need to always look it up
-	// honestly this should have to render the template this should handle adding user to the datase and such and then
-	// after setting up in DB and setting updefualt profilel it redirects to the actaully home page.
+
 }
 
 func LoveShare(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := template.ParseFiles("templates/SongofDay.html")
 	if err != nil {
-		fmt.Println("Error reading template ->>", err)
+		logger.Info(fmt.Sprintf("Error reading template:  %e", err))
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
 	}
@@ -128,7 +126,7 @@ func LoveShare(w http.ResponseWriter, r *http.Request) {
 	// Render template without any variables (blank for now)
 	err = tmpl.Execute(w, nil)
 	if err != nil {
-		fmt.Println("Error reading template ->>", err)
+		logger.Info(fmt.Sprintf("Error executing template:  %e", err))
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 	}
 }
@@ -176,9 +174,6 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// workig with song of the day stuff. least important right now
-func Song(w http.ResponseWriter, r *http.Request) {}
-
 // home page -> http request to /signIn if 200 response -> home page/login with spotify, if 200 response -> redirect page where song of the day is
 
 func Test(w http.ResponseWriter, r *http.Request) {
@@ -202,7 +197,7 @@ func getToken(code string) (sw.TokenResponse, error) {
 
 	req, err := http.NewRequest("POST", endpoint, encodedBody)
 	if err != nil {
-		fmt.Println("Error creating request:", err)
+		logger.Route(fmt.Sprintf("Error creating request %e", err))
 		return invalidResponse, err
 	}
 
@@ -214,16 +209,17 @@ func getToken(code string) (sw.TokenResponse, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("Error making request:", err)
+		logger.Route(fmt.Sprintf("Error making request: %e", err))
 		return invalidResponse, err
 	}
 	defer resp.Body.Close()
 
 	// Read response body
 	body, _ := io.ReadAll(resp.Body)
-	fmt.Printf("Response Status: %d\nResponse Body: %s\n", resp.StatusCode, string(body))
+	logger.Info(fmt.Sprintf("Response Status: %d\nResponse Body: %s\n", resp.StatusCode, string(body)))
 
 	if resp.StatusCode != http.StatusOK {
+		logger.Warning(fmt.Sprintf("Generating Token response for code %s resulted in a non 200 status code %d", code, resp.StatusCode))
 		return invalidResponse, fmt.Errorf("error: response status code %d", resp.StatusCode)
 	}
 
@@ -237,45 +233,6 @@ func getToken(code string) (sw.TokenResponse, error) {
 }
 
 // just returns a access token and that tokens expiration time
-func refresh(refreshToken string) (string, int, error) {
-	var endpoint = "https://accounts.spotify.com/api/token"
-
-	// Encode clientID:clientSecret in Base64
-	//idSecretCombo := fmt.Sprintf("%s:%s", clientID, clientSecrete)
-	headerAuth := IDComboHash64 //base64.StdEncoding.EncodeToString([]byte(idSecretCombo))
-
-	// Form data
-	data := url.Values{}
-	data.Set("grant_type", "refresh_token")
-	data.Set("refresh_token", refreshToken)
-
-	// Create request
-	req, err := http.NewRequest("POST", endpoint, bytes.NewBufferString(data.Encode()))
-	if err != nil {
-		return "", 0, fmt.Errorf("error creating request: %w", err)
-	}
-
-	// Set headers
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Authorization", "Basic "+headerAuth)
-
-	// Make request
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", 0, fmt.Errorf("error making request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Decode response
-	var Response sw.RefreshResponse
-	err = json.NewDecoder(resp.Body).Decode(&Response)
-	if err != nil {
-		return "", 0, fmt.Errorf("error decoding response: %w", err)
-	}
-
-	return Response.AccessToken, Response.Expir, nil
-}
 
 type Response struct {
 	Message string `json:"message"`
@@ -301,6 +258,7 @@ func UniqueUsername(w http.ResponseWriter, r *http.Request) {
 		resp.Message = fmt.Sprintf("Username %s is available", name)
 	} else {
 		w.WriteHeader(http.StatusConflict)
+		logger.Info(fmt.Sprintf("Username %s is already taken, must select new one", name))
 		resp.Message = fmt.Sprintf("Username %s already exists. Choose another one", name)
 	}
 
