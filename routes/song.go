@@ -44,9 +44,26 @@ func Comments(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case "POST":
+		// submit Comment under a song
+		err = sw.SubmitComment(request.SongURI, request.UserResp)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(fmt.Sprintf("")))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+
 		fmt.Println("")
 	case "GET": // returns all comments associated with a songURI that we have
 		// for now just return all but later add standard api practices like limiting and offsets, ect
+		comments, err := sw.GetComments(request.SongURI, 0, 0)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(fmt.Sprintf("")))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(comments)
 
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -60,10 +77,10 @@ func CommentsID(w http.ResponseWriter, r *http.Request) {
 	commentID := vars["comment_id"]
 	switch r.Method {
 	case "GET":
-		comment := sw.GetComment(commentID)
-		if comment == nil { // doesnt exist
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(fmt.Sprintf("comment with id %s not found", commentID)))
+		comment, err := sw.GetComment(commentID)
+		if err != nil { // doesnt exist
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(fmt.Sprintf("")))
 		}
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(comment)

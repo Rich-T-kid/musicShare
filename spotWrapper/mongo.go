@@ -15,7 +15,6 @@ import (
 
 const DatabaseName = "test_db"
 
-// cache interface defining methods for caching
 type cache[T comparable, V any] interface {
 	Get(ctx context.Context, key string) V
 	Set(ctx context.Context, key string, data T, expire int) // Handles inserts & updates
@@ -485,7 +484,9 @@ func (m *MongoDBStore) GetComments(songID string) ([]UserComments, error) {
 	err := collection.FindOne(context.TODO(), filter).Decode(&song)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, fmt.Errorf("no song found with songURI: %s", songID)
+			var empty []UserComments
+			return empty, nil
+			//return nil, fmt.Errorf("no song found with songURI: %s", songID)
 		}
 		return nil, fmt.Errorf("failed to find song: %w", err)
 	}
@@ -581,28 +582,38 @@ var (
 )
 
 // TODO: Beofore testing on other code base. just implement the below methods using the interfaces
-func SaveUser() {
-	fmt.Println("Prentending to save user info ->  implement later")
+func SaveUser(user *UserMongoDocument) error {
+	fmt.Println("Attempting to save user info with name ", user.UserProfileResponse.DisplayName)
+	return database.SaveUser(user)
 }
 
-func SubmitComment(songid spotifyURI, comment UserComments) error { return nil }
-func GetComments(songid spotifyURI, limit, offset int) []UserComments {
-	var empty []UserComments
-	return empty
+// for now just get working but later on there should be a slight level of
+// misdirection so that we can handle errors better
+func SubmitComment(songid string, comment UserComments) error {
+	return database.SubmitComment(songid, comment)
+}
+func GetComments(songid string, limit, offset int) ([]UserComments, error) {
+	return database.GetComments(songid)
 }
 
 // find old and update it with new comment. if old cant be found return error
-func UpdateComment(oldComment string, new UserComments) (bool, error) {
-	return true, nil
+func UpdateComment(oldCommentID string, new UserComments) (bool, error) {
+	return database.UpdateComment(oldCommentID, new)
 }
 
-func GetComment(commentID string) *UserComments {
-	return nil
+func GetComment(commentID string) (*UserComments, error) {
+	return database.GetComment(commentID)
 }
 
-func DeleteComment(commentID string) error { return nil }
+func DeleteComment(commentID string) error { return database.DeleteComment(commentID) }
 
 // if any of these return nil it means it wasnt found
-func GetUserDocument(userid string) (*UserMongoDocument, error) { return nil, nil }
-func GetUserSongs(userid string) (*SongTypes, error)            { return nil, nil }
-func GetUserComments(userid string) ([]UserComments, error)     { return nil, nil }
+func GetUserDocument(userid string) (*UserMongoDocument, error) {
+	return database.GetUserByID(userid)
+}
+func GetUserSongs(userid string) ([]SongTypes, error) {
+	return database.GetUserSongs(userid)
+}
+func GetUserComments(userid string) ([]UserComments, error) {
+	return database.GetUserComments(userid)
+}

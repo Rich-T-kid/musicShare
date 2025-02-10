@@ -22,9 +22,9 @@ func InitRoutes() *mux.Router {
 	r.HandleFunc("/songs", RedirectPage).Methods("GET")                                // API
 	r.HandleFunc("/comments", Comments).Methods("GET", "POST", "PUT", "DELETE")        // API
 	r.HandleFunc("/comments/{comment_id}", CommentsID).Methods("GET", "PUT", "DELETE") // API
-	r.HandleFunc("/Users/{user_id}", UserID).Methods("GET")                            // API
-	r.HandleFunc("/Users/{user_id}/songs", UserSongs).Methods("GET")                   // API
-	r.HandleFunc("/Users/{user_id}/comments", UserComments).Methods("GET")             // API
+	r.HandleFunc("/Users/{user_id}", UserID).Methods("GET")// return user json document                            // API
+	r.HandleFunc("/Users/{user_id}/songs", UserSongs).Methods("GET")// return all song uri's a user has listneded to as well as their liked and disliked songs                   // API
+	r.HandleFunc("/Users/{user_id}/comments", UserComments).Methods("GET") // return all coments made by user by their user id            // API
 	r.HandleFunc("/exist/{name}", UniqueUsername).Methods("GET")                       // API
 	// Start server
 	return r

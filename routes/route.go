@@ -105,22 +105,14 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx = context.WithValue(ctx, sw.UsernameKey{}, username) // Username is passed along to all request made here
-	fmt.Printf("did not set key %s this time\n", key)
 	cache.StoreTokens(username, tokens.AccessToken, tokens.Refresh)
-	fmt.Println("User")
 	res, err := sw.NewUserProfile(ctx, tokens.AccessToken)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(res)
-	encoder := json.NewEncoder(w)
-	encoder.Encode(res)
+	sw.SaveUser(res)
 
-	//http.Redirect(w, r, "/loveShare", http.StatusSeeOther)
-	//fmt.Println("Result ,", res)
-	//TODO: this is where id like store the tokens in mongo DB so we dont need to always look it up
-	// honestly this should have to render the template this should handle adding user to the datase and such and then
-	// after setting up in DB and setting updefualt profilel it redirects to the actaully home page.
+	http.Redirect(w, r, "/loveShare", http.StatusSeeOther)
 }
 
 func LoveShare(w http.ResponseWriter, r *http.Request) {
@@ -175,7 +167,6 @@ func RedirectLink(w http.ResponseWriter, r *http.Request) {
 func SignIn(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		sw.SaveUser()
 		http.Redirect(w, r, "/auth", http.StatusSeeOther)
 	default:
 		w.Write([]byte("Wrong method type, Must be Post Request"))
