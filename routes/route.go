@@ -36,7 +36,7 @@ var (
 func HomePage(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := template.ParseFiles("templates/login.html")
 	if err != nil {
-		fmt.Println("Error reading template ->>", err)
+		logger.Warning(fmt.Sprintf("Error reading template:  %e", err))
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
 	}
@@ -44,7 +44,7 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 	// Render template without any variables (blank for now)
 	err = tmpl.Execute(w, nil)
 	if err != nil {
-		fmt.Println("Error reading template ->>", err)
+		logger.Warning(fmt.Sprintf("Error Executing template:  %e", err))
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 	}
 
@@ -54,7 +54,7 @@ func RedirectPage(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := template.ParseFiles("templates/index.html")
 	if err != nil {
-		fmt.Println("Error reading template ->>", err)
+		logger.Info(fmt.Sprintf("Error reading template:  %e", err))
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
 	}
@@ -62,7 +62,7 @@ func RedirectPage(w http.ResponseWriter, r *http.Request) {
 	// Render template without any variables (blank for now)
 	err = tmpl.Execute(w, nil)
 	if err != nil {
-		fmt.Println("Error reading template ->>", err)
+		logger.Info(fmt.Sprintf("Error Executing template:  %e", err))
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 	}
 
@@ -81,7 +81,7 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 	spotifyError := QV.Get("error")
 	if spotifyError != "" {
 		http.Error(w, "Error occurred with Spotify login", http.StatusBadRequest)
-		fmt.Println("Spotify callback error:", spotifyError)
+		logger.Critical(fmt.Sprintf("Spotify Returned an error instead of a valid code %e", err))
 		return
 	}
 
@@ -93,14 +93,12 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 	tokens, err := getToken(code)
 	if err != nil {
 		http.Error(w, "Failed to get access token", http.StatusInternalServerError)
-		fmt.Println("Error getting access token:", err)
 		return
 	}
 	ctx := context.Background()
 	cache := userNamecache
 	key := fmt.Sprintf("UniqueUserName:%s", username)
 	if !cache.Exist(ctx, key) {
-		fmt.Printf("key -> %s did not already exist Setting it now\n", key)
 		cache.Set(ctx, key, "1", Month)
 	}
 
@@ -110,16 +108,18 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	sw.SaveUser(res)
 
 	http.Redirect(w, r, "/loveShare", http.StatusSeeOther)
+
 }
 
 func LoveShare(w http.ResponseWriter, r *http.Request) {
 
 	tmpl, err := template.ParseFiles("templates/SongofDay.html")
 	if err != nil {
-		fmt.Println("Error reading template ->>", err)
+		logger.Info(fmt.Sprintf("Error reading template:  %e", err))
 		http.Error(w, "Error loading template", http.StatusInternalServerError)
 		return
 	}
@@ -127,7 +127,7 @@ func LoveShare(w http.ResponseWriter, r *http.Request) {
 	// Render template without any variables (blank for now)
 	err = tmpl.Execute(w, nil)
 	if err != nil {
-		fmt.Println("Error reading template ->>", err)
+		logger.Info(fmt.Sprintf("Error executing template:  %e", err))
 		http.Error(w, "Error rendering template", http.StatusInternalServerError)
 	}
 }
@@ -197,7 +197,7 @@ func getToken(code string) (sw.TokenResponse, error) {
 
 	req, err := http.NewRequest("POST", endpoint, encodedBody)
 	if err != nil {
-		fmt.Println("Error creating request:", err)
+		logger.Route(fmt.Sprintf("Error creating request %e", err))
 		return invalidResponse, err
 	}
 
@@ -209,16 +209,17 @@ func getToken(code string) (sw.TokenResponse, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("Error making request:", err)
+		logger.Route(fmt.Sprintf("Error making request: %e", err))
 		return invalidResponse, err
 	}
 	defer resp.Body.Close()
 
 	// Read response body
 	body, _ := io.ReadAll(resp.Body)
-	fmt.Printf("Response Status: %d\nResponse Body: %s\n", resp.StatusCode, string(body))
+	logger.Info(fmt.Sprintf("Response Status: %d\nResponse Body: %s\n", resp.StatusCode, string(body)))
 
 	if resp.StatusCode != http.StatusOK {
+		logger.Warning(fmt.Sprintf("Generating Token response for code %s resulted in a non 200 status code %d", code, resp.StatusCode))
 		return invalidResponse, fmt.Errorf("error: response status code %d", resp.StatusCode)
 	}
 
@@ -257,6 +258,7 @@ func UniqueUsername(w http.ResponseWriter, r *http.Request) {
 		resp.Message = fmt.Sprintf("Username %s is available", name)
 	} else {
 		w.WriteHeader(http.StatusConflict)
+		logger.Info(fmt.Sprintf("Username %s is already taken, must select new one", name))
 		resp.Message = fmt.Sprintf("Username %s already exists. Choose another one", name)
 	}
 

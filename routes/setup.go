@@ -12,6 +12,7 @@ func InitRoutes() *mux.Router {
 	r := mux.NewRouter().StrictSlash(true) // /exist/r/ == /exist/r
 	r.Use(temp)
 	// Define routes
+
 	r.HandleFunc("/test", Test).Methods("GET")                                         // API
 	r.HandleFunc("/login", HomePage).Methods("GET")                                    // HTML
 	r.HandleFunc("/signIn", SignIn).Methods("POST")                                    // API
@@ -26,10 +27,12 @@ func InitRoutes() *mux.Router {
 	r.HandleFunc("/Users/{user_id}/songs", UserSongs).Methods("GET")// return all song uri's a user has listneded to as well as their liked and disliked songs                   // API
 	r.HandleFunc("/Users/{user_id}/comments", UserComments).Methods("GET") // return all coments made by user by their user id            // API
 	r.HandleFunc("/exist/{name}", UniqueUsername).Methods("GET")                       // API
+
 	// Start server
 	return r
 }
 
+// Middleware
 func temp(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

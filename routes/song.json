@@ -1,0 +1,13 @@
+{
+    "request" :{
+    "userName":"string",
+    "exclude":["spotifyTrackURi,spotifyTrackURi,spotifyTrackURi,potifyTrackURi,"]
+},
+
+    "response":{
+        "Song OF day":"Spotify Track URI",
+        "status":200
+    }
+
+    }
+

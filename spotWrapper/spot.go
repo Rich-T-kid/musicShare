@@ -44,7 +44,6 @@ func FetchSpotifyTop(ctx context.Context, userid, accessToken, dataType string) 
 	// Send request with timeout
 	resp, err := proxy.RetryRequest(ctx, req)
 	if err != nil {
-		fmt.Println("1")
 		return nil, fmt.Errorf("error making request: %w", err)
 	}
 	defer resp.Body.Close()
@@ -111,11 +110,6 @@ func GetUserData(ctx context.Context, token string) *UserProfileResponse {
 	resp, err := proxy.RetryRequest(ctx, req) //http.DefaultClient.Do(req)
 	handleError(err, "http.DefaultClient.Do")
 	defer resp.Body.Close()
-
-	// Check for expired access token
-	if resp.StatusCode == 401 {
-		log.Fatal("Access Token has expired. You need to grab a new one.")
-	}
 
 	// Validate the response status code
 	err = checkResponseStatusCode(resp, []int{200})
@@ -239,7 +233,7 @@ func CreatePlaylist(ctx context.Context, token, spotifyID, playlistName, descrip
 	if err != nil {
 		// If not 201, log the response body for debugging
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		log.Printf("Error response body: %s", string(bodyBytes))
+		logger.Info(fmt.Sprintf("Error response body: %s", string(bodyBytes)))
 		return PlaylistResponse{}, err
 	}
 
@@ -292,7 +286,7 @@ func AddToPlaylist(ctx context.Context, token, songURI, playlistID string) bool 
 	if err != nil {
 		// Log any error response
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		log.Printf("Error response body: %s", string(bodyBytes))
+		logger.Info(fmt.Sprintf("Error response body: %s", string(bodyBytes)))
 		log.Fatal(err)
 	}
 
@@ -305,7 +299,7 @@ func AddToPlaylist(ctx context.Context, token, songURI, playlistID string) bool 
 func addtoPlaylist(ctx context.Context, endpoint, token, songURI, playlistID string) bool {
 	// Ensure valid inputs
 	if endpoint == "" || token == "" || songURI == "" || playlistID == "" {
-		log.Println("Error: Missing required parameters (endpoint, token, songURI, playlistID)")
+		logger.Info("Error: Missing required parameters (endpoint, token, songURI, playlistID)")
 		return false
 	}
 
@@ -321,14 +315,14 @@ func addtoPlaylist(ctx context.Context, endpoint, token, songURI, playlistID str
 	// Marshal the body into JSON format
 	jsonData, err := json.Marshal(body)
 	if err != nil {
-		log.Printf("Error marshalling request body: %v", err)
+		logger.Info(fmt.Sprintf("Error marshalling request body: %v", err))
 		return false
 	}
 
 	// Create the HTTP request
 	req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
-		log.Printf("Error creating HTTP request: %v", err)
+		logger.Info(fmt.Sprintf("Error marshalling request body: %v", err))
 		return false
 	}
 
@@ -339,16 +333,10 @@ func addtoPlaylist(ctx context.Context, endpoint, token, songURI, playlistID str
 	// Execute the request
 	resp, err := proxy.RetryRequest(ctx, req)
 	if err != nil {
-		log.Printf("Error executing HTTP request: %v", err)
+		logger.Route(fmt.Sprintf("Error executing HTTP request, route %s  error: %v", resp.Request.URL.String(), err))
 		return false
 	}
 	defer resp.Body.Close()
-
-	// Handle response status codes
-	if resp.StatusCode == 401 {
-		log.Println("Error: Access Token has expired. Please grab a new one.")
-		return false
-	}
 
 	if resp.StatusCode == 201 {
 		log.Println("Track added to playlist successfully.")
@@ -358,13 +346,13 @@ func addtoPlaylist(ctx context.Context, endpoint, token, songURI, playlistID str
 	// Handle other unexpected status codes
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("Error reading response body: %v", err)
+		logger.Info(fmt.Sprintf("Error reading response body: %v", err))
 		return false
 	}
 
 	// Log response body and status code for debugging purposes
-	log.Printf("Unexpected status code: %d", resp.StatusCode)
-	log.Printf("Response body: %s", string(bodyBytes))
+	log.Printf("Unexpected status code: %d\n", resp.StatusCode)
+	log.Printf("Response body: %s\n", string(bodyBytes))
 
 	return false
 }
@@ -510,11 +498,6 @@ func TopTracks(ctx context.Context, token string) UserTopTrack {
 		handleError(err, "http.DefaultClient.Do")
 		defer resp.Body.Close()
 
-		// Check for expired access token
-		if resp.StatusCode == 401 {
-			log.Fatal("Access Token has expired. You need to grab a new one.")
-		}
-
 		// Validate the response status code
 		err = checkResponseStatusCode(resp, []int{200})
 		handleError(err, "checkResponseStatusCode")
@@ -586,7 +569,7 @@ func NewUserProfile(ctx context.Context, token string) (*UserMongoDocument, erro
 	if !ok {
 		return nil, fmt.Errorf("username was not properly set in the context")
 	}
-	fmt.Printf("Finished processing new user %s at %v\n", userID, currentTime)
+	logger.Info(fmt.Sprintf("Finished processing new user %s at %v\n", userID, currentTime))
 
 	// Gather music data from Spotify
 	// Note: These functions (ArtistInfo, TopTracks, TopArtist) do not return errors,
@@ -596,21 +579,17 @@ func NewUserProfile(ctx context.Context, token string) (*UserMongoDocument, erro
 		TopTracks(ctx, token),
 		TopArtist(ctx, token),
 	)
-	fmt.Println("1")
 
 	// Retrieve the user's profile data
 	// Note: GetUserData does not return an error.
 	userProfileInfo := GetUserData(ctx, token)
-	fmt.Println("2")
 
 	// Create a new playlist for the user. This function returns an error, so we handle it.
 	playlistStatus, err := CreatePlaylist(ctx, token, userProfileInfo.SpotifyID, PlayListName, PlaylistDescription)
 	handleError(err, "Failed to Generate new Playlist on user's Profile")
-	fmt.Println("3")
 
 	// Build a new music playlist from the returned status
 	newPlaylist := NewMusicPlaylist(playlistStatus.URI)
-	fmt.Println("4")
 
 	// Construct the final DB document (UserMongoDocument)
 	// combining user profile data, music information, and the playlist.

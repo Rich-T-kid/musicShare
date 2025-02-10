@@ -14,7 +14,6 @@ type LoggerInterface interface {
 	Info(message string)
 	Warning(message string)
 	Critical(message string)
-	Debug(message string)
 	Route(message string)
 }
 
@@ -98,19 +97,4 @@ func (l *Logger) Critical(message string) {
 	l.writeLog("CRITICAL", "red", message, "critical.log")
 }
 
-// Debug logs a debug message to both the terminal and debug.log.
-func (l *Logger) Debug(message string) {
-	l.writeLog("DEBUG", "blue", message, "debug.log")
-}
-
 // Main function to demonstrate usage of the logger
-func main() {
-	// Initialize Logger
-	var logger LoggerInterface = NewLogger()
-
-	// Example Logs
-	logger.Info("This is an info message")
-	logger.Warning("This is a warning message")
-	logger.Critical("This is a critical message")
-	logger.Debug("This is a debug message for easier debugging")
-}
