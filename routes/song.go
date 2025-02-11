@@ -8,26 +8,72 @@ import (
 
 	"github.com/gorilla/mux"
 
+	rec "loveShare/reccomendations"
 	sw "loveShare/spotWrapper"
 )
 
 // placing the Crud of route request Now
+type SongRequest struct {
+	UserName    string   `json:"username"`
+	ExcludeList []string `json:"unwanted_tracks"`
+}
+
+// placing the Crud of route request Now
+// Song of the Day
 func Song(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		fmt.Println("")
-	case "GET":
-		fmt.Println("")
-	case "PUT":
-		fmt.Println("")
-	case "DELETE":
-		fmt.Println("")
+		bodyByte, err := io.ReadAll(r.Body)
+		if err != nil {
+			logger.Info(fmt.Sprintf("Songs endpoint: error reading request body: %v", err))
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Malformed JSON body"))
+			return // Early return
+		}
+
+		// 2) Parse JSON into SongRequest
+		var requestJson SongRequest
+		err = json.Unmarshal(bodyByte, &requestJson)
+		if err != nil {
+			logger.Info(fmt.Sprintf("Songs endpoint: error parsing JSON body: %v", err))
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Malformed JSON body"))
+			return // Early return
+		}
+		//cache := userNamecache
+		if requestJson.UserName == "" { //|| cache.Exist(r.Context(),fmt.Sprintf("UniqueUserName:%s",requestJson.UserName)){
+			logger.Info("Songs endpoint: empty or invalid UserName field")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Username cannot be empty or invalid"))
+			return // Early return
+		}
+
+		// 4) Business logic: generate a new song
+		song, err := rec.NewSong(requestJson.UserName, requestJson.ExcludeList)
+		if err != nil {
+			logger.Warning(fmt.Sprintf("Error generating 'New Song of the day' for user %s: %v", requestJson.UserName, err))
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Internal server error while generating a new song"))
+			return // Early return
+		}
+
+		// 5) Return success
+		response := map[string]string{
+			"SpotifyURI": song,
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Write([]byte(fmt.Sprintf("%s is not a valid method for this route", r.Method)))
 	}
 }
 
 // tested and works
 func Comments(w http.ResponseWriter, r *http.Request) {
 	// request Body contains the song id
+	w.Header().Set("Content-Type", "application/json")
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -78,6 +124,7 @@ func Comments(w http.ResponseWriter, r *http.Request) {
 func CommentsID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	commentID := vars["comment_id"]
+	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case "GET":
 		comment, err := sw.GetComment(commentID)
@@ -134,6 +181,7 @@ func CommentsID(w http.ResponseWriter, r *http.Request) {
 func UserID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID := vars["user_id"]
+	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case "GET":
 		UserDoc, err := sw.GetUserDocument(userID)
@@ -154,6 +202,7 @@ func UserID(w http.ResponseWriter, r *http.Request) {
 func UserSongs(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID := vars["user_id"]
+	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case "GET":
 		SongTypes, err := sw.GetUserSongs(userID)
@@ -163,7 +212,6 @@ func UserSongs(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(fmt.Sprintf("Ensure that a valid userID is pass into the url. %s resulted in this error: %e", userID, err)))
 			return
 		}
-		fmt.Println("got to here songTypes,", SongTypes)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(SongTypes)
 	default:
