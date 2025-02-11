@@ -12,6 +12,7 @@ import (
 	sw "loveShare/spotWrapper"
 )
 
+// TODO:Add more error handling for the mongodb wrapper that may return errors. try and have helpful response codes
 // placing the Crud of route request Now
 type SongRequest struct {
 	UserName    string   `json:"username"`
@@ -20,6 +21,7 @@ type SongRequest struct {
 
 // placing the Crud of route request Now
 // Song of the Day
+// TODO: works but needs more input Validation
 func Song(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
