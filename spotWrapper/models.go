@@ -509,15 +509,6 @@ type MusicSharePlaylist struct {
 type CommentsRequest struct {
 	SongURI  string       `json:"songID"`
 	UserResp UserComments `json:"userComment"`
-	// later on we are going to capture states about the users listening experience as well
-	// for ex. (In one struct)
-	/*
-		| Time Played     | Tracks how long the song was played |
-		| Pauses         | Counts number of times paused |
-		| Skips         | Tracks if the user skipped the song |
-		| Replays         | Number of times the song was replayed |
-		| Total Time Listened | Measures overall listening time |
-	*/
 }
 
 type SongTypes struct {

@@ -134,6 +134,7 @@ func LoveShare(w http.ResponseWriter, r *http.Request) {
 
 // returns link that user will use to login with spotify
 func RedirectLink(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	var baseURL = "https://accounts.spotify.com/authorize"
 	var username = r.Header.Get("X-username")
 	if username == "" {

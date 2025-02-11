@@ -334,13 +334,7 @@ func (m *MongoDBStore) GetUserSongs(userID string) ([]SongTypes, error) {
 	// Combine song URIs from Listened, LikedSongs, and DislikedSongs into a unique set.
 	songIDSet := make(map[string]struct{})
 	for _, uri := range userDoc.Listened {
-		songIDSet[string(uri.Song)] = struct{}{}
-	}
-	for _, uri := range userDoc.LikedSongs {
-		songIDSet[string(uri.Song)] = struct{}{}
-	}
-	for _, uri := range userDoc.DislikedSongs {
-		songIDSet[string(uri.Song)] = struct{}{}
+		songIDSet[uri.Song] = struct{}{}
 	}
 
 	// Convert the set into a slice.
@@ -349,9 +343,16 @@ func (m *MongoDBStore) GetUserSongs(userID string) ([]SongTypes, error) {
 		songIDs = append(songIDs, id)
 	}
 
+	// **Fix: Ensure songIDs is not empty before querying**
+	if len(songIDs) == 0 {
+		var empty []SongTypes
+		return empty, nil // Return an empty list instead of querying MongoDB
+	}
+
 	// Query the "songs" collection for documents whose songURI is in songIDs.
 	songsCollection := db.Collection("songs")
 	query := bson.M{"songURI": bson.M{"$in": songIDs}}
+
 	cursor, err := songsCollection.Find(context.TODO(), query)
 	if err != nil {
 		return nil, fmt.Errorf("error querying songs: %w", err)
@@ -449,28 +450,48 @@ func (m *MongoDBStore) DeleteSong(songID string) error {
 func (m *MongoDBStore) SubmitComment(songID string, comment UserComments) error {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("songs")
-	// Create a filter to find the song document by its songURI.
+
+	// Ensure the comment has a UUID
 	if comment.UUID == "" {
 		comment.UUID = newID()
 	}
+	comment.SongID = songID
+
+	// Filter to check if the song exists
 	filter := bson.M{"songURI": songID}
 
-	// Use $push to add the comment to the comments array.
+	// Update operation to add a comment
 	update := bson.M{
 		"$push": bson.M{
 			"comments": comment,
 		},
 	}
 
+	// Try updating the song document
 	updateResult, err := collection.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
 		return fmt.Errorf("failed to update song: %w", err)
 	}
-	if updateResult.ModifiedCount == 0 {
-		log.Println("No documents were updated. Check if the song exists.")
+
+	// If the song does not exist, create a new document
+	if updateResult.MatchedCount == 0 {
+		newSong := SongTypes{
+			SongURI:       songID,
+			Comments:      []UserComments{comment},
+			AlternateName: []string{},
+			UUID:          newID(),
+		}
+		fmt.Println("New comment being added", comment)
+
+		_, err := collection.InsertOne(context.TODO(), newSong)
+		if err != nil {
+			return fmt.Errorf("failed to insert new song: %w", err)
+		}
+		fmt.Printf("Created new song document with comment for %s\n", songID)
 	} else {
 		fmt.Printf("Successfully added comment to song %s\n", songID)
 	}
+
 	return nil
 }
 

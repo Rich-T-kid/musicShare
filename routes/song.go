@@ -25,6 +25,7 @@ func Song(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// tested and works
 func Comments(w http.ResponseWriter, r *http.Request) {
 	// request Body contains the song id
 	bodyBytes, err := io.ReadAll(r.Body)
@@ -54,7 +55,8 @@ func Comments(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 
 		fmt.Println("")
-	case "GET": // returns all comments associated with a songURI that we have
+	case "GET":
+		// returns all comments associated with a songURI that we have
 		// for now just return all but later add standard api practices like limiting and offsets, ect
 		comments, err := sw.GetComments(request.SongURI, 0, 0)
 		if err != nil {
@@ -72,6 +74,7 @@ func Comments(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// Tested and works
 func CommentsID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	commentID := vars["comment_id"]
@@ -127,6 +130,7 @@ func CommentsID(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// works
 func UserID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID := vars["user_id"]
@@ -145,6 +149,8 @@ func UserID(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+
+// doesnt work
 func UserSongs(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID := vars["user_id"]
@@ -152,9 +158,12 @@ func UserSongs(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		SongTypes, err := sw.GetUserSongs(userID)
 		if err != nil {
+			fmt.Println("Error: ", err)
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(fmt.Sprintf("Ensure that a valid userID is pass into the url. %s resulted in this error: %e", userID, err)))
+			return
 		}
+		fmt.Println("got to here songTypes,", SongTypes)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(SongTypes)
 	default:
@@ -163,6 +172,8 @@ func UserSongs(w http.ResponseWriter, r *http.Request) {
 
 	}
 }
+
+// works
 func UserComments(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID := vars["user_id"]
