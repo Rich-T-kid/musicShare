@@ -83,17 +83,19 @@ func cloneRequest(req *http.Request) (*http.Request, error) {
 	return clonedReq, nil
 }
 
-/* retrys request up to {maxTries} times and returns a copy of the body in bytes*/
 func (o *Overload) RetryRequest(ctx context.Context, req *http.Request) (*http.Response, error) {
 	delay := o.defaultDelay
 	userid, ok := ctx.Value(UsernameKey{}).(string)
 	if !ok {
+		logger.Critical("UserName was not properly set in the context.") 
 		return nil, fmt.Errorf("UserName was not properly set in the context.context \n")
 	}
+
 	// returns true if access Token is valid. if false generate new one. if error occures as in cant generate a valid access token then return error
 	// this is so that we dont have to deal with handling a 401 response code, if the access token is valid here it will remain valid for the duration of the retrys below
 	authHeader := req.Header.Get("Authorization")
 	if authHeader == "" {
+		logger.Critical(fmt.Sprintf("No Authorization header found for user: %s", userid)) // 
 		return nil, errors.New("forgot to attach Authorization header before making Spotify request")
 	}
 
@@ -103,37 +105,39 @@ func (o *Overload) RetryRequest(ctx context.Context, req *http.Request) (*http.R
 		// Get refresh token from cache
 		_, refreshToken, err := tokenStore.GetTokens(userid)
 		if err != nil || refreshToken == "" {
+			logger.Critical(fmt.Sprintf("Refresh token not found or is empty for user: %s, err: %v", userid, err)) // <-- added logging
 			return nil, errors.New("refresh token not found, user must re-authenticate")
 		}
+
 		validAccessToken := generateAccessToken(refreshToken)
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", validAccessToken))
+
 		err = tokenStore.StoreTokens(userid, validAccessToken, refreshToken)
 		if err != nil {
-			return nil, fmt.Errorf("failed to store new tokens in Redis: %w", err)
+			logger.Critical(fmt.Sprintf("Failed to store new tokens in cache for user %s, err: %v", userid, err)) // <-- added logging
+			return nil, fmt.Errorf("failed to store new tokens in cache: %w", err)
 		}
-		// make request
-
-		// if accessToken doesnt exist check if refresh token exist and is associated with it (old access token) if there is one
-		// get a new access token using that refresh token and return it here. save to cache before returning here
-		// if a refresh token is not associated with this access token return nil, an appropate error
 	}
-	// 🔥 Validate Authorization Header
 
 	for attempt := 1; attempt <= o.maxTries; attempt++ {
 		// Clone the request to ensure all retries send the exact same data
 		clonedReq, err := cloneRequest(req)
 		if err != nil {
+			logger.Critical(fmt.Sprintf("Attempt %d for user %s: error cloning request - %v", attempt, userid, err)) // <-- added logging
 			return nil, fmt.Errorf("error cloning request: %w", err)
 		}
 
 		// Send HTTP request
 		resp, err := o.client.Do(clonedReq)
 		if err != nil {
-			fmt.Printf("Attempt %d: Request failed - %v\n", attempt, err)
+			logger.Warning(fmt.Sprintf("Attempt %d for user %s: Request failed - %v", attempt, userid, err)) // <-- added logging
 		} else {
 			// Handle rate limits (429) and server errors (500, 503, 408)
 			if resp.StatusCode == 429 || resp.StatusCode == 500 || resp.StatusCode == 503 || resp.StatusCode == 408 {
-				fmt.Printf("Attempt %d: Received %d response\n", attempt, resp.StatusCode)
+				logger.Warning(fmt.Sprintf(
+					"Attempt %d for user %s: Received %d response - applying backoff",
+					attempt, userid, resp.StatusCode,
+				)) 
 
 				// If a `Retry-After` header is present, respect it
 				if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
@@ -148,16 +152,21 @@ func (o *Overload) RetryRequest(ctx context.Context, req *http.Request) (*http.R
 			} else if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
 				return resp, nil // ✅ Success, return response
 			} else if resp.StatusCode == 401 {
-				logger.Info(fmt.Sprintf("user:%s did not have a valid access Token Attempting to obtain new one", userid))
+				logger.Info(fmt.Sprintf("User %s did not have a valid access token. Attempting to obtain a new one.", userid))
 				fmt.Println("Write to log file as well as getting new refresh token")
-			} else { // 400 , 403 , 404 , retrying wont affect these resposne codes so just break out early and return the error
-				// clean up resources
-				bodyBytes, err := io.ReadAll(resp.Body)
-				if err != nil {
-					fmt.Println(err)
+			} else {
+				// 400, 403, 404 -> retrying won't help. Break out early & return the error
+				bodyBytes, readErr := io.ReadAll(resp.Body)
+				if readErr != nil {
+					logger.Critical(fmt.Sprintf("Failed to read response body on attempt %d for user %s: %v", attempt, userid, readErr)) // <-- added logging
+					fmt.Println(readErr)
 				}
 				bodyString := string(bodyBytes)
-				logger.Route(fmt.Sprintf("request to %s returned a %d StatusCode with a body of :%s", req.URL, resp.StatusCode, bodyString))
+				logger.Route(fmt.Sprintf(
+					"Request to %s for user %s returned a %d StatusCode with a body of: %s",
+					req.URL, userid, resp.StatusCode, bodyString,
+				)) // <-- added logging
+
 				resp.Body.Close()
 				return resp, unexpectedStatus
 			}
@@ -166,22 +175,25 @@ func (o *Overload) RetryRequest(ctx context.Context, req *http.Request) (*http.R
 		// Apply exponential backoff with jitter (randomized delay)
 		jitter := rand.Intn(delay) // Add randomness to prevent bursts
 		sleepDuration := time.Duration(delay+jitter) * time.Second
-		fmt.Printf("Retrying in %v seconds...\n", sleepDuration)
+
+		logger.Info(fmt.Sprintf("Attempt %d for user %s failed, retrying in %v...", attempt, userid, sleepDuration)) // <-- added logging
 
 		select {
 		case <-time.After(sleepDuration): // Wait before retrying
 		case <-ctx.Done():
-			//clean up resources
-			resp.Body.Close()
-			fmt.Println("Context canceled, stopping retries")
-			return nil, ctx.Err() // If context is canceled, return immediately
+			// Clean up resources
+			logger.Warning(fmt.Sprintf("Context canceled for user %s on attempt %d, stopping retries.", userid, attempt)) // <-- added logging
+			if resp != nil && resp.Body != nil {
+				resp.Body.Close()
+			}
+			return nil, ctx.Err()
 		}
 
 		// Double the delay for exponential backoff (max cap at 20s)
 		delay = min(delay*2, 20)
 	}
 
-	fmt.Println("Max retry attempts reached, request failed")
+	logger.Critical(fmt.Sprintf("Max retry attempts (%d) reached for user %s, request failed.", o.maxTries, userid)) // <-- added logging
 	return nil, failedRetry
 }
 
@@ -191,3 +203,5 @@ func min(a, b int) int {
 	}
 	return b
 }
+
+/* retrys request up to {maxTries} times and returns a copy of the body in bytes*/

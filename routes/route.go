@@ -108,10 +108,16 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
+<<<<<<< HEAD
 	logger.Info(fmt.Sprintf("Profile Response %v", res))
 	encoder := json.NewEncoder(w)
 	encoder.Encode(res)
 
+=======
+	sw.SaveUser(res)
+
+	http.Redirect(w, r, "/loveShare", http.StatusSeeOther)
+>>>>>>> 57f8dbe9ec3d5559cb0ebcaf4711f743f575b168
 }
 
 func LoveShare(w http.ResponseWriter, r *http.Request) {
@@ -133,6 +139,7 @@ func LoveShare(w http.ResponseWriter, r *http.Request) {
 
 // returns link that user will use to login with spotify
 func RedirectLink(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	var baseURL = "https://accounts.spotify.com/authorize"
 	var username = r.Header.Get("X-username")
 	if username == "" {
@@ -166,7 +173,6 @@ func RedirectLink(w http.ResponseWriter, r *http.Request) {
 func SignIn(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		sw.SaveUser()
 		http.Redirect(w, r, "/auth", http.StatusSeeOther)
 	default:
 		w.Write([]byte("Wrong method type, Must be Post Request"))
