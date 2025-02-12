@@ -1,0 +1,125 @@
+@import url('https://fonts.googleapis.com/css2?family=Cedarville+Cursive&family=Handjet:wght@300;400;500;600;700&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:wght@300;400;500;700&display=swap');
+
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: Poppins, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 12pt;
+  text-align: center;
+}
+body {
+  min-height: 100vh;
+  background-image: url(svgImages/background.jpg);
+  background-size: cover;
+  background-position: right;
+  overflow: hidden;
+}
+.wrapper {
+  background-color: black;
+  height: 100vh;
+  width: max(40%, 600px);
+  padding: 10px;
+  border-radius: 0 20px 20px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+h1 {
+  color: white;
+  font-size: 3rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+form {
+  width: min(400px, 100%);
+  margin-top: 20px;
+  margin-bottom: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+form > div {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+form label {
+  flex-shrink: 0;
+  height: 50px;
+  width: 50px;
+  background-color: #287042;
+  fill: white;
+  color: white;
+  border-radius: 15px 0px 0px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+form input {
+  box-sizing: border-box;
+  height: 50px;
+  width: 100%;
+  border: 2px solid grey;
+  border-radius: 0px 15px 15px 0px;
+  font: inherit;
+  padding: 0 10px;
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: grey;
+  background-color:  rgb(23, 25, 22);
+  transition: 150ms ease;
+}
+form input:hover{
+  border: 3px solid white;
+}
+button {
+  margin-top: 10px;
+  margin-bottom: 30px;
+  width: 50%;
+  height: 50px;
+  background-color: #287042;
+  color: white;
+  font-size: 1.2rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 15px;
+  cursor: pointer;
+  font: inherit;
+}
+button:active {
+  background-color: grey;
+}
+a, p {
+  color: white;
+}
+form input:focus {
+  outline: none;
+  border: 3px solid #287042;
+}
+
+div:has(input:focus) > label {
+  background-color: grey;
+}
+
+@media (max-width: 1100px) {
+  .wrapper {
+    width: min(100%, 600px);
+    border-radius: 0;
+  }
+}
+
+form div.incorrect label {
+  background-color: #8b0000;
+}
+
+form div.incorrect input {
+  border: 3px solid #8b0000;
+}
+
