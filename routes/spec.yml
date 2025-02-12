@@ -1,0 +1,261 @@
+openapi: 3.0.0
+info:
+  title: LoveShare API
+  description: API documentation for LoveShare, a music-sharing platform integrated with Spotify.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+paths:
+  /test:
+    get:
+      summary: Test endpoint
+      responses:
+        '200':
+          description: Successful response
+  /login:
+    get:
+      summary: Renders the login page
+      responses:
+        '200':
+          description: HTML login page
+  /signIn:
+    post:
+      summary: Handles user sign-in
+      responses:
+        '200':
+          description: Redirects to /auth on success
+  /link:
+    get:
+      summary: Provides a Spotify login link
+      responses:
+        '200':
+          description: JSON response with login URL
+  /callback:
+    get:
+      summary: Handles Spotify OAuth callback
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Redirects to /loveShare on success
+  /loveShare:
+    get:
+      summary: Renders the LoveShare homepage
+      responses:
+        '200':
+          description: HTML page with song of the day
+  /auth:
+    get:
+      summary: Renders the authentication page
+      responses:
+        '200':
+          description: Authentication page
+  /songs:
+    get:
+      summary: Fetch all songs
+      responses:
+        '200':
+          description: Returns a list of songs
+    post:
+      summary: Generate a new song recommendation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SongRequest'
+      responses:
+        '200':
+          description: Returns recommended song
+  /comments:
+    get:
+      summary: Fetch all comments
+      responses:
+        '200':
+          description: List of comments
+    post:
+      summary: Submit a comment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentsRequest'
+      responses:
+        '200':
+          description: Comment submitted successfully
+  /comments/{comment_id}:
+    get:
+      summary: Fetch a specific comment
+      parameters:
+        - name: comment_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Comment details
+    put:
+      summary: Update a comment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserComments'
+      responses:
+        '200':
+          description: Comment updated successfully
+    delete:
+      summary: Delete a comment
+      responses:
+        '200':
+          description: Comment deleted successfully
+  /users/{user_id}:
+    get:
+      summary: Fetch user profile
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User profile details
+  /users/{user_id}/songs:
+    get:
+      summary: Fetch user's listened and liked songs
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of user's songs
+  /users/{user_id}/comments:
+    get:
+      summary: Fetch user's comments
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of user's comments
+  /exist/{name}:
+    get:
+      summary: Check if username exists
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Username availability
+components:
+  schemas:
+    CommentsRequest:
+      type: object
+      properties:
+        songID:
+          type: string
+        userComment:
+          $ref: '#/components/schemas/UserComments'
+    UserComments:
+      type: object
+      properties:
+        username:
+          type: string
+        rating:
+          type: integer
+          format: int8
+        review:
+          type: string
+        songID:
+          type: string
+        ID:
+          type: string
+    SongRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        unwanted_tracks:
+          type: array
+          items:
+            type: string
+    UserMongoDocument:
+      type: object
+      properties:
+        ID:
+          type: string
+        user_profile_response:
+          $ref: '#/components/schemas/UserProfileResponse'
+        user_music_info:
+          $ref: '#/components/schemas/UserMusicInfo'
+        liked_songs:
+          type: array
+          items:
+            type: string
+        disliked_songs:
+          type: array
+          items:
+            type: string
+        listened:
+          type: array
+          items:
+            type: string
+    UserProfileResponse:
+      type: object
+      properties:
+        country:
+          type: string
+        display_name:
+          type: string
+        email:
+          type: string
+        images:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type: string
+    UserMusicInfo:
+      type: object
+      properties:
+        FollowedArtist:
+          type: array
+          items:
+            $ref: '#/components/schemas/FollowedArtist'
+    FollowedArtist:
+      type: object
+      properties:
+        name:
+          type: string
+        Spotify:
+          type: string
+        genres:
+          type: array
+          items:
+            type: string
+        URI:
+          type: string

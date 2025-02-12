@@ -1,0 +1,37 @@
+package routes
+
+import (
+	"net/http"
+
+	"github.com/gorilla/mux"
+)
+
+func InitRoutes() *mux.Router {
+
+	r := mux.NewRouter().StrictSlash(true) // /exist/r/ == /exist/r
+	r.Use(temp)
+	// Define routes
+	r.HandleFunc("/test", Test).Methods("GET")                                         // API
+	r.HandleFunc("/login", HomePage).Methods("GET")                                    // HTML
+	r.HandleFunc("/signIn", SignIn).Methods("POST")                                    // API
+	r.HandleFunc("/link", RedirectLink).Methods("GET")                                 // API
+	r.HandleFunc("/callback", SongofDay).Methods("GET")                                // HTML
+	r.HandleFunc("/loveShare", LoveShare).Methods("GET")                               // HTML
+	r.HandleFunc("/auth", RedirectPage).Methods("GET")                                 // HTML
+	r.HandleFunc("/songs", Song).Methods("GET")                                        // API
+	r.HandleFunc("/comments", Comments).Methods("GET", "POST", "PUT", "DELETE")        // API
+	r.HandleFunc("/comments/{comment_id}", CommentsID).Methods("GET", "PUT", "DELETE") // API
+	r.HandleFunc("/users/{user_id}", UserID).Methods("GET")                            // return user json document                            // API
+	r.HandleFunc("/users/{user_id}/songs", UserSongs).Methods("GET")                   // return all song uri's a user has listneded to as well as their liked and disliked songs                   // API
+	r.HandleFunc("/users/{user_id}/comments", UserComments).Methods("GET")             // return all coments made by user by their user id            // API
+	r.HandleFunc("/exist/{name}", UniqueUsername).Methods("GET")                       // API
+	// Start server
+	return r
+}
+
+func temp(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		next.ServeHTTP(w, r)
+	})
+}

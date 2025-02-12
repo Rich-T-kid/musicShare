@@ -1,20 +1,22 @@
 package routes
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/gorilla/mux"
 
-	sw "loveShare/spotWrapper"
+	"github.com/Rich-T-kid/musicShare/pkg"
+	"github.com/Rich-T-kid/musicShare/pkg/logs"
+	sw "github.com/Rich-T-kid/musicShare/spotwrapper"
 )
 
 var (
@@ -27,6 +29,7 @@ var (
 	randomString  = "ChangeLater"
 	IDComboHash64 = "OGIyNzdmYjE2NzIxNDQwMWJiOTQ4NmU1M2QxODM5NjM6ZGI5NzY3MTc5MWVjNDYxZjkyMmM1MjM1OWQ4OWNkZGY="
 	userNamecache = sw.NewCache[string, string]()
+	logger        = logs.NewLogger() //TODO:
 	Month         = 720
 )
 
@@ -79,7 +82,7 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 	spotifyError := QV.Get("error")
 	if spotifyError != "" {
 		http.Error(w, "Error occurred with Spotify login", http.StatusBadRequest)
-		fmt.Println("Spotify callback error:", spotifyError)
+		logger.Warning(fmt.Sprintf("userid: %s has encountered a Spotify callback error: %s", username, spotifyError))
 		return
 	}
 
@@ -101,17 +104,16 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("key -> %s did not already exist Setting it now\n", key)
 		cache.Set(ctx, key, "1", Month)
 	}
-	fmt.Printf("did not set key %s this time\n", key)
-	// store users access and refresh tokens in a reddis  HSET
+
+	ctx = context.WithValue(ctx, pkg.UsernameKey{}, username) // Username is passed along to all request made here
 	cache.StoreTokens(username, tokens.AccessToken, tokens.Refresh)
-	//Need to define what info we want to load from spotify on login from use
-	res, _ := sw.FetchSpotifyTop(ctx, username, tokens.AccessToken, "tracks")
-	encoder := json.NewEncoder(w)
-	encoder.Encode(res)
-	//fmt.Println("Result ,", res)
-	//TODO: this is where id like store the tokens in mongo DB so we dont need to always look it up
-	// honestly this should have to render the template this should handle adding user to the datase and such and then
-	// after setting up in DB and setting updefualt profilel it redirects to the actaully home page.
+	res, err := sw.NewUserProfile(ctx, tokens.AccessToken)
+	if err != nil {
+		log.Fatal(err)
+	}
+	sw.SaveUser(res)
+
+	http.Redirect(w, r, "/loveShare", http.StatusSeeOther)
 }
 
 func LoveShare(w http.ResponseWriter, r *http.Request) {
@@ -133,6 +135,7 @@ func LoveShare(w http.ResponseWriter, r *http.Request) {
 
 // returns link that user will use to login with spotify
 func RedirectLink(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	var baseURL = "https://accounts.spotify.com/authorize"
 	var username = r.Header.Get("X-username")
 	if username == "" {
@@ -166,7 +169,6 @@ func RedirectLink(w http.ResponseWriter, r *http.Request) {
 func SignIn(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		sw.SaveUser()
 		http.Redirect(w, r, "/auth", http.StatusSeeOther)
 	default:
 		w.Write([]byte("Wrong method type, Must be Post Request"))
@@ -174,18 +176,15 @@ func SignIn(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// workig with song of the day stuff. least important right now
-func Song(w http.ResponseWriter, r *http.Request) {}
-
 // home page -> http request to /signIn if 200 response -> home page/login with spotify, if 200 response -> redirect page where song of the day is
 
 func Test(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	w.Write([]byte("Hello world"))
 }
-func getToken(code string) (sw.TokenResponse, error) {
+func getToken(code string) (pkg.TokenResponse, error) {
 	var endpoint = "https://accounts.spotify.com/api/token"
-	var invalidResponse sw.TokenResponse
+	var invalidResponse pkg.TokenResponse
 
 	// Correctly format client credentials
 	idSecretCombo := fmt.Sprintf("%s:%s", clientID, clientSecrete)
@@ -225,7 +224,7 @@ func getToken(code string) (sw.TokenResponse, error) {
 		return invalidResponse, fmt.Errorf("error: response status code %d", resp.StatusCode)
 	}
 
-	var response sw.TokenResponse
+	var response pkg.TokenResponse
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return invalidResponse, fmt.Errorf("error parsing response: %v", err)
@@ -235,45 +234,6 @@ func getToken(code string) (sw.TokenResponse, error) {
 }
 
 // just returns a access token and that tokens expiration time
-func refresh(refreshToken string) (string, int, error) {
-	var endpoint = "https://accounts.spotify.com/api/token"
-
-	// Encode clientID:clientSecret in Base64
-	//idSecretCombo := fmt.Sprintf("%s:%s", clientID, clientSecrete)
-	headerAuth := IDComboHash64 //base64.StdEncoding.EncodeToString([]byte(idSecretCombo))
-
-	// Form data
-	data := url.Values{}
-	data.Set("grant_type", "refresh_token")
-	data.Set("refresh_token", refreshToken)
-
-	// Create request
-	req, err := http.NewRequest("POST", endpoint, bytes.NewBufferString(data.Encode()))
-	if err != nil {
-		return "", 0, fmt.Errorf("error creating request: %w", err)
-	}
-
-	// Set headers
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Authorization", "Basic "+headerAuth)
-
-	// Make request
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", 0, fmt.Errorf("error making request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Decode response
-	var Response sw.RefreshResponse
-	err = json.NewDecoder(resp.Body).Decode(&Response)
-	if err != nil {
-		return "", 0, fmt.Errorf("error decoding response: %w", err)
-	}
-
-	return Response.AccessToken, Response.Expir, nil
-}
 
 type Response struct {
 	Message string `json:"message"`
