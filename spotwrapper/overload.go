@@ -12,7 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"loveShare/logs"
+	"github.com/Rich-T-kid/musicShare/pkg"
+	"github.com/Rich-T-kid/musicShare/pkg/logs"
 )
 
 /*
@@ -85,9 +86,9 @@ func cloneRequest(req *http.Request) (*http.Request, error) {
 
 func (o *Overload) RetryRequest(ctx context.Context, req *http.Request) (*http.Response, error) {
 	delay := o.defaultDelay
-	userid, ok := ctx.Value(UsernameKey{}).(string)
+	userid, ok := ctx.Value(pkg.UsernameKey{}).(string)
 	if !ok {
-		logger.Critical("UserName was not properly set in the context.") 
+		logger.Critical("UserName was not properly set in the context.")
 		return nil, fmt.Errorf("UserName was not properly set in the context.context \n")
 	}
 
@@ -95,7 +96,7 @@ func (o *Overload) RetryRequest(ctx context.Context, req *http.Request) (*http.R
 	// this is so that we dont have to deal with handling a 401 response code, if the access token is valid here it will remain valid for the duration of the retrys below
 	authHeader := req.Header.Get("Authorization")
 	if authHeader == "" {
-		logger.Critical(fmt.Sprintf("No Authorization header found for user: %s", userid)) // 
+		logger.Critical(fmt.Sprintf("No Authorization header found for user: %s", userid)) //
 		return nil, errors.New("forgot to attach Authorization header before making Spotify request")
 	}
 
@@ -137,7 +138,7 @@ func (o *Overload) RetryRequest(ctx context.Context, req *http.Request) (*http.R
 				logger.Warning(fmt.Sprintf(
 					"Attempt %d for user %s: Received %d response - applying backoff",
 					attempt, userid, resp.StatusCode,
-				)) 
+				))
 
 				// If a `Retry-After` header is present, respect it
 				if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {

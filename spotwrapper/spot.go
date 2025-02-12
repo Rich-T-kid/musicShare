@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/Rich-T-kid/musicShare/pkg"
 )
 
 // handles the API related stuff
@@ -22,55 +23,6 @@ var (
 
 const PlayListName = "Rhythm Reflections"
 const PlaylistDescription = "This playlist is your personal musical corner, capturing every track that resonates with you. Each like you give adds a new gem, building a reflection of your evolving taste. Whether it’s a dance anthem or a calming instrumental, watch your collection grow with every fresh discovery. Let these melodies spark joyful memories and inspire new favorites. Enjoy an ever-evolving soundtrack that tells your story, one beloved track at a time!"
-
-// FetchSpotifyTop fetches top artists or tracks from Spotify API
-func FetchSpotifyTop(ctx context.Context, userid, accessToken, dataType string) (SpotifyTopResponse, error) {
-	// Validate input type
-	if dataType != "artists" && dataType != "tracks" {
-		return nil, errors.New("invalid type: must be 'artists' or 'tracks'")
-	}
-	// Construct the Spotify API URL
-	url := fmt.Sprintf("https://api.spotify.com/v1/me/top/%s", dataType)
-
-	// Create a new HTTP request with context
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("error creating request: %w", err)
-	}
-
-	// Set Authorization header
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-
-	// Send request with timeout
-	resp, err := proxy.RetryRequest(ctx, req)
-	if err != nil {
-		fmt.Println("1")
-		return nil, fmt.Errorf("error making request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Handle different response statuses
-	switch resp.StatusCode {
-	case http.StatusOK: // 200
-		// Decode JSON into the appropriate struct based on dataType
-		if dataType == "artists" {
-			var response UserTopArtist
-			if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-				return nil, fmt.Errorf("error decoding JSON: %w", err)
-			}
-			return &response, nil
-		} else {
-			var response UserResponse
-			if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-				return nil, fmt.Errorf("error decoding JSON: %w", err)
-			}
-			return &response, nil
-		}
-
-	default:
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-}
 
 // Helper function to handle errors consistently
 func handleError(err error, context string) {
@@ -92,7 +44,7 @@ func checkResponseStatusCode(resp *http.Response, validCodes []int) error {
 // Have the overloader perform all the request after you test each method
 // Function to get user data and unmarshal it into the provided struct
 // Works
-func GetUserData(ctx context.Context, token string) *UserProfileResponse {
+func GetUserData(ctx context.Context, token string) *pkg.UserProfileResponse {
 	// Hardcode the endpoint for testing purposes
 	endpoint := "https://api.spotify.com/v1/me"
 
@@ -124,19 +76,19 @@ func GetUserData(ctx context.Context, token string) *UserProfileResponse {
 	bodyBytes, err := io.ReadAll(resp.Body)
 	handleError(err, "io.ReadAll")
 	// Unmarshal the response body into the provided struct
-	var dest UserProfileResponse
+	var dest pkg.UserProfileResponse
 	err = json.Unmarshal(bodyBytes, &dest)
 	handleError(err, "json.Unmarshal")
 	return &dest
 }
 
 // ConvertToFollowedArtists converts SpotArtist struct to FollowedArtist structs
-func ConvertToFollowedArtists(spotArtists *SpotArtist) []FollowedArtist {
+func ConvertToFollowedArtists(spotArtists *pkg.SpotArtist) []pkg.FollowedArtist {
 	if spotArtists == nil {
 		handleError(fmt.Errorf("spotArtists is nil"), "ConvertToFollowedArtists")
 	}
 
-	var followedArtists []FollowedArtist
+	var followedArtists []pkg.FollowedArtist
 
 	// Iterate over the items in SpotArtist
 	for _, artist := range spotArtists.Artists.Items {
@@ -147,7 +99,7 @@ func ConvertToFollowedArtists(spotArtists *SpotArtist) []FollowedArtist {
 		}
 
 		// Create FollowedArtist from SpotArtist fields
-		followedArtist := FollowedArtist{
+		followedArtist := pkg.FollowedArtist{
 			Name:    artist.Name,
 			Spotify: artist.ExternalUrls.Spotify,
 			Genres:  artist.Genres,
@@ -162,7 +114,7 @@ func ConvertToFollowedArtists(spotArtists *SpotArtist) []FollowedArtist {
 }
 
 // Function to get artist information and convert it to FollowedArtist structs
-func ArtistInfo(ctx context.Context, token string) []FollowedArtist {
+func ArtistInfo(ctx context.Context, token string) []pkg.FollowedArtist {
 	// Hardcode the endpoint for testing purposes
 	endpoint := "https://api.spotify.com/v1/me/following?type=artist"
 
@@ -193,7 +145,7 @@ func ArtistInfo(ctx context.Context, token string) []FollowedArtist {
 	// Read the response body
 	bodyBytes, err := io.ReadAll(resp.Body)
 	handleError(err, "io.ReadAll")
-	var dest SpotArtist
+	var dest pkg.SpotArtist
 	// Unmarshal the response body into the provided struct
 	err = json.Unmarshal(bodyBytes, &dest)
 	handleError(err, "json.Unmarshal")
@@ -203,7 +155,7 @@ func ArtistInfo(ctx context.Context, token string) []FollowedArtist {
 }
 
 // Function to create a playlist using the Spotify API
-func CreatePlaylist(ctx context.Context, token, spotifyID, playlistName, description string) (PlaylistResponse, error) {
+func CreatePlaylist(ctx context.Context, token, spotifyID, playlistName, description string) (pkg.PlaylistResponse, error) {
 	// Hardcode the endpoint for testing purposes
 	endpoint := "https://api.spotify.com/v1/users/" + spotifyID + "/playlists"
 
@@ -213,7 +165,7 @@ func CreatePlaylist(ctx context.Context, token, spotifyID, playlistName, descrip
 	}
 
 	// Prepare request body
-	body := CreatePlaylistRequestBody{
+	body := pkg.CreatePlaylistRequestBody{
 		Name:        playlistName,
 		Description: description,
 		Public:      false,
@@ -240,7 +192,7 @@ func CreatePlaylist(ctx context.Context, token, spotifyID, playlistName, descrip
 		// If not 201, log the response body for debugging
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		log.Printf("Error response body: %s", string(bodyBytes))
-		return PlaylistResponse{}, err
+		return pkg.PlaylistResponse{}, err
 	}
 
 	// Read the response body
@@ -248,7 +200,7 @@ func CreatePlaylist(ctx context.Context, token, spotifyID, playlistName, descrip
 	handleError(err, "io.ReadAll")
 
 	// Unmarshal the response into PlaylistResponse struct
-	var response PlaylistResponse
+	var response pkg.PlaylistResponse
 	err = json.Unmarshal(bodyBytes, &response)
 	handleError(err, "json.Unmarshal")
 
@@ -267,7 +219,7 @@ func AddToPlaylist(ctx context.Context, token, songURI, playlistID string) bool 
 	}
 
 	// Prepare the request body
-	body := PlaylistAddtionRequest{
+	body := pkg.PlaylistAddtionRequest{
 		URI:      []string{songURI},
 		Position: 0,
 	}
@@ -313,7 +265,7 @@ func addtoPlaylist(ctx context.Context, endpoint, token, songURI, playlistID str
 	endpoint = fmt.Sprintf("%s%s/tracks", endpoint, playlistID)
 
 	// Prepare the request body
-	body := PlaylistAddtionRequest{
+	body := pkg.PlaylistAddtionRequest{
 		URI:      []string{fmt.Sprintf("spotify:track:%s", songURI)},
 		Position: 0,
 	}
@@ -370,8 +322,8 @@ func addtoPlaylist(ctx context.Context, endpoint, token, songURI, playlistID str
 }
 
 // Function to parse artist data and return a list of UserTopArtist structs
-func parseArtist(data SpotifyTopArtistResponse) []UserTopArtist {
-	var result []UserTopArtist
+func parseArtist(data pkg.SpotifyTopArtistResponse) []pkg.UserTopArtist {
+	var result []pkg.UserTopArtist
 
 	for _, item := range data.Items {
 		// Check if artist image exists or not
@@ -381,7 +333,7 @@ func parseArtist(data SpotifyTopArtistResponse) []UserTopArtist {
 		}
 
 		// Create UserTopArtist and append to result
-		userArtist := UserTopArtist{
+		userArtist := pkg.UserTopArtist{
 			Name:        item.Name,
 			URI:         item.URI,
 			Genres:      item.Genres,
@@ -393,14 +345,14 @@ func parseArtist(data SpotifyTopArtistResponse) []UserTopArtist {
 }
 
 // Function to fetch and process the user's top artists
-func TopArtist(ctx context.Context, token string) []UserTopArtist {
+func TopArtist(ctx context.Context, token string) []pkg.UserTopArtist {
 	endpoint := "https://api.spotify.com/v1/me/top/artists"
 	if token == "" {
 		handleError(fmt.Errorf("access token is empty"), "TopArtist")
 	}
 
 	// Initialize variables
-	var allArtists []UserTopArtist
+	var allArtists []pkg.UserTopArtist
 	limit := 5 // Set a limit on the number of requests to avoid infinite loops
 	pageCount := 0
 
@@ -435,7 +387,7 @@ func TopArtist(ctx context.Context, token string) []UserTopArtist {
 		handleError(err, "io.ReadAll")
 
 		// Unmarshal the response body into the SpotifyTopArtistResponse struct
-		var dest SpotifyTopArtistResponse
+		var dest pkg.SpotifyTopArtistResponse
 		err = json.Unmarshal(bodyBytes, &dest)
 		handleError(err, "json.Unmarshal")
 
@@ -459,16 +411,16 @@ func TopArtist(ctx context.Context, token string) []UserTopArtist {
 	return allArtists
 }
 
-func parseTracks(response *SpotifyTrackResponse, topTrack *UserTopTrack) {
+func parseTracks(response *pkg.SpotifyTrackResponse, topTrack *pkg.UserTopTrack) {
 	// Parse top albums
 	for _, item := range response.Items {
-		album := Album{
+		album := pkg.Album{
 			Artist:      item.Artists[0].URI,
 			Name:        item.Album.Name,
 			AlbumLink:   fmt.Sprintf("https://spotify.com/album/%s", item.Album.URI),
 			AlbumURI:    item.Album.URI,
 			AlbumID:     item.ID,
-			AlbumImage:  Image{URL: item.Album.Images[0].URL},
+			AlbumImage:  pkg.Image{URL: item.Album.Images[0].URL},
 			AlbumName:   item.Album.Name,
 			TotalTracks: item.Album.TotalTracks,
 			ReleaseDate: item.Album.ReleaseDate,
@@ -477,7 +429,7 @@ func parseTracks(response *SpotifyTrackResponse, topTrack *UserTopTrack) {
 		topTrack.TopAlbums = append(topTrack.TopAlbums, album)
 
 		// Parse top singles (tracks)
-		track := SingleTrack{
+		track := pkg.SingleTrack{
 			Artist:      item.Artists[0].URI,
 			Name:        item.Name,
 			TrackLink:   fmt.Sprintf("https://spotify.com/track/%s", item.URI),
@@ -489,9 +441,9 @@ func parseTracks(response *SpotifyTrackResponse, topTrack *UserTopTrack) {
 	}
 }
 
-func TopTracks(ctx context.Context, token string) UserTopTrack {
+func TopTracks(ctx context.Context, token string) pkg.UserTopTrack {
 	endpoint := "https://api.spotify.com/v1/me/top/tracks"
-	var result UserTopTrack
+	var result pkg.UserTopTrack
 	limit := 50 // Set limit to 50 to fetch 50 items per page (Spotify API max)
 	currentPage := 0
 	maxpages := 3
@@ -524,7 +476,7 @@ func TopTracks(ctx context.Context, token string) UserTopTrack {
 		handleError(err, "io.ReadAll")
 
 		// Unmarshal the response body into the SpotifyTrackResponse struct
-		var response SpotifyTrackResponse
+		var response pkg.SpotifyTrackResponse
 		err = json.Unmarshal(bodyBytes, &response)
 		handleError(err, "json.Unmarshal")
 
@@ -546,8 +498,8 @@ func TopTracks(ctx context.Context, token string) UserTopTrack {
 	return result
 }
 
-func NewDocument(followed []FollowedArtist, topTracks UserTopTrack, UserFavorites []UserTopArtist) *UserMusicInfo {
-	return &UserMusicInfo{
+func NewDocument(followed []pkg.FollowedArtist, topTracks pkg.UserTopTrack, UserFavorites []pkg.UserTopArtist) *pkg.UserMusicInfo {
+	return &pkg.UserMusicInfo{
 		FollowedArtist: followed,
 		TopTracks:      topTracks,
 		TopsArtist:     UserFavorites,
@@ -555,21 +507,21 @@ func NewDocument(followed []FollowedArtist, topTracks UserTopTrack, UserFavorite
 }
 
 // Starts off as empty doesnt need to be allocated right now
-func NewMusicPlaylist(playlistID string) *MusicSharePlaylist {
-	return &MusicSharePlaylist{
+func NewMusicPlaylist(playlistID string) *pkg.MusicSharePlaylist {
+	return &pkg.MusicSharePlaylist{
 		Name:        PlayListName,
 		PlaylistURI: playlistID,
-		Songs:       make([]spotifyURI, 0),
+		Songs:       make([]pkg.SpotifyURI, 0),
 	}
 }
-func NewDBDocument(userProfile UserProfileResponse, userMusicInfo UserMusicInfo, playlist MusicSharePlaylist) *UserMongoDocument {
-	return &UserMongoDocument{
+func NewDBDocument(userProfile pkg.UserProfileResponse, userMusicInfo pkg.UserMusicInfo, playlist pkg.MusicSharePlaylist) *pkg.UserMongoDocument {
+	return &pkg.UserMongoDocument{
 		UserProfileResponse: userProfile,
 		UserMusicInfo:       userMusicInfo,
 		MusicSharePlaylist:  playlist,
-		Comments:            make([]UserComments, 0),
-		LikedSongs:          make([]spotifyURI, 0),
-		DislikedSongs:       make([]spotifyURI, 0),
+		Comments:            make([]pkg.UserComments, 0),
+		LikedSongs:          make([]pkg.SpotifyURI, 0),
+		DislikedSongs:       make([]pkg.SpotifyURI, 0),
 		CreatedAt:           time.Now(),
 		Updated:             time.Now(),
 	}
@@ -577,12 +529,12 @@ func NewDBDocument(userProfile UserProfileResponse, userMusicInfo UserMusicInfo,
 
 // NewUserProfile builds a new user profile document by fetching music data,
 // user data, and creating a new playlist.
-func NewUserProfile(ctx context.Context, token string) (*UserMongoDocument, error) {
+func NewUserProfile(ctx context.Context, token string) (*pkg.UserMongoDocument, error) {
 	// Record current time, which can be useful for logging
 	currentTime := time.Now()
 
 	// Retrieve the user ID from context
-	userID, ok := ctx.Value(UsernameKey{}).(string)
+	userID, ok := ctx.Value(pkg.UsernameKey{}).(string)
 	if !ok {
 		return nil, fmt.Errorf("username was not properly set in the context")
 	}

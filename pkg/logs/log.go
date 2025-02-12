@@ -69,10 +69,12 @@ func (l *Logger) writeLog(level, color, message, filename string) {
 	}
 
 	// Format the log message
-	logMessage := fmt.Sprintf("%s%s[%s] %s\033[0m\n", colorCode, timeStamp, level, message)
-
+	ColoredlogMessage := fmt.Sprintf("%s%s[%s] %s\033[0m\n", colorCode, timeStamp, level, message)
+	logMessage := fmt.Sprintf("%s: %s", timeStamp, message)
 	// Output to console
-	fmt.Print(logMessage)
+	if level == "INFO" || level == "CRITICAL" {
+		fmt.Print(ColoredlogMessage)
+	}
 
 	// Write to log file
 	log.SetOutput(file)
@@ -101,16 +103,4 @@ func (l *Logger) Critical(message string) {
 // Debug logs a debug message to both the terminal and debug.log.
 func (l *Logger) Debug(message string) {
 	l.writeLog("DEBUG", "blue", message, "debug.log")
-}
-
-// Main function to demonstrate usage of the logger
-func main() {
-	// Initialize Logger
-	var logger LoggerInterface = NewLogger()
-
-	// Example Logs
-	logger.Info("This is an info message")
-	logger.Warning("This is a warning message")
-	logger.Critical("This is a critical message")
-	logger.Debug("This is a debug message for easier debugging")
 }

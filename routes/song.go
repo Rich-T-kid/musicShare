@@ -8,8 +8,9 @@ import (
 
 	"github.com/gorilla/mux"
 
-	rec "loveShare/reccomendations"
-	sw "loveShare/spotWrapper"
+	"github.com/Rich-T-kid/musicShare/pkg"
+	rec "github.com/Rich-T-kid/musicShare/reccomendations"
+	sw "github.com/Rich-T-kid/musicShare/spotwrapper"
 )
 
 // TODO:Add more error handling for the mongodb wrapper that may return errors. try and have helpful response codes
@@ -83,7 +84,7 @@ func Comments(w http.ResponseWriter, r *http.Request) {
 		logger.Warning(fmt.Sprintf("Error decoding requst body %e", err))
 		return
 	}
-	var request sw.CommentsRequest
+	var request pkg.CommentsRequest
 	err = json.Unmarshal(bodyBytes, &request)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -137,7 +138,7 @@ func CommentsID(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(comment)
 	case "PUT":
-		var newComment sw.UserComments
+		var newComment pkg.UserComments
 		bodyBytes, err := io.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
