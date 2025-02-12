@@ -14,8 +14,9 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"loveShare/logs"
-	sw "loveShare/spotWrapper"
+	"github.com/Rich-T-kid/musicShare/pkg"
+	"github.com/Rich-T-kid/musicShare/pkg/logs"
+	sw "github.com/Rich-T-kid/musicShare/spotwrapper"
 )
 
 var (
@@ -81,7 +82,7 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 	spotifyError := QV.Get("error")
 	if spotifyError != "" {
 		http.Error(w, "Error occurred with Spotify login", http.StatusBadRequest)
-		fmt.Println("Spotify callback error:", spotifyError)
+		logger.Warning(fmt.Sprintf("userid: %s has encountered a Spotify callback error: %s", username, spotifyError))
 		return
 	}
 
@@ -104,7 +105,7 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 		cache.Set(ctx, key, "1", Month)
 	}
 
-	ctx = context.WithValue(ctx, sw.UsernameKey{}, username) // Username is passed along to all request made here
+	ctx = context.WithValue(ctx, pkg.UsernameKey{}, username) // Username is passed along to all request made here
 	cache.StoreTokens(username, tokens.AccessToken, tokens.Refresh)
 	res, err := sw.NewUserProfile(ctx, tokens.AccessToken)
 	if err != nil {
@@ -181,9 +182,9 @@ func Test(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	w.Write([]byte("Hello world"))
 }
-func getToken(code string) (sw.TokenResponse, error) {
+func getToken(code string) (pkg.TokenResponse, error) {
 	var endpoint = "https://accounts.spotify.com/api/token"
-	var invalidResponse sw.TokenResponse
+	var invalidResponse pkg.TokenResponse
 
 	// Correctly format client credentials
 	idSecretCombo := fmt.Sprintf("%s:%s", clientID, clientSecrete)
@@ -223,7 +224,7 @@ func getToken(code string) (sw.TokenResponse, error) {
 		return invalidResponse, fmt.Errorf("error: response status code %d", resp.StatusCode)
 	}
 
-	var response sw.TokenResponse
+	var response pkg.TokenResponse
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return invalidResponse, fmt.Errorf("error parsing response: %v", err)

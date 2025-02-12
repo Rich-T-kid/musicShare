@@ -11,6 +11,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/Rich-T-kid/musicShare/pkg"
 )
 
 const DatabaseName = "test_db"
@@ -57,7 +59,7 @@ func (s *spotish[T, V]) Get(ctx context.Context, key string) V {
 	value, ok := any(str).(V)
 	if !ok {
 		var zero V
-		fmt.Printf("Could not convert key %s of value %s to type %v Value of reddis implentation cache", key, str)
+		fmt.Printf("Could not convert key %s of value %s to type (Cache[key,**Value]) Value of reddis implentation cache", key, str)
 		return zero
 	}
 
@@ -146,25 +148,25 @@ type DocumentStore interface {
 	// CRUD Operations
 }
 type UserStore interface {
-	GetUserByID(userID string) (*UserMongoDocument, error)
-	SaveUser(user *UserMongoDocument) error
-	GetUserSongs(userID string) ([]SongTypes, error)
-	GetUserComments(userID string) ([]UserComments, error)
+	GetUserByID(userID string) (*pkg.UserMongoDocument, error)
+	SaveUser(user *pkg.UserMongoDocument) error
+	GetUserSongs(userID string) ([]pkg.SongTypes, error)
+	GetUserComments(userID string) ([]pkg.UserComments, error)
 }
 
 // TODO: Change this after merge
 type SongStore interface {
-	GetSongByID(songID string) (*SongTypes, error)
-	InsertSong(song *SongTypes) error
-	UpdateSong(song *SongTypes) error
+	GetSongByID(songID string) (*pkg.SongTypes, error)
+	InsertSong(song *pkg.SongTypes) error
+	UpdateSong(song *pkg.SongTypes) error
 	DeleteSong(songID string) error
 }
 type CommentStore interface {
-	SubmitComment(songID string, comment UserComments) error
-	GetComments(songID string) ([]UserComments, error)
-	UpdateComment(oldComment string, newComment UserComments) (bool, error)
+	SubmitComment(songID string, comment pkg.UserComments) error
+	GetComments(songID string) ([]pkg.UserComments, error)
+	UpdateComment(oldComment string, newComment pkg.UserComments) (bool, error)
 	DeleteComment(commentID string) error
-	GetComment(commentID string) (*UserComments, error)
+	GetComment(commentID string) (*pkg.UserComments, error)
 }
 
 /*
@@ -243,14 +245,14 @@ func (m *MongoDBStore) Connected(ctx context.Context) error {
 
 // Implement UserStore methods
 
-func (m *MongoDBStore) GetUserByID(userID string) (*UserMongoDocument, error) {
+func (m *MongoDBStore) GetUserByID(userID string) (*pkg.UserMongoDocument, error) {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("users")
 
 	// Filter by the application-provided user ID stored in the "id" field.
 	filter := bson.M{"uuid": userID}
 
-	var userDoc UserMongoDocument
+	var userDoc pkg.UserMongoDocument
 	err := collection.FindOne(context.TODO(), filter).Decode(&userDoc)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -261,7 +263,7 @@ func (m *MongoDBStore) GetUserByID(userID string) (*UserMongoDocument, error) {
 
 	return &userDoc, nil
 }
-func (m *MongoDBStore) SaveUser(user *UserMongoDocument) error {
+func (m *MongoDBStore) SaveUser(user *pkg.UserMongoDocument) error {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("users")
 	if user.UUID == "" {
@@ -279,13 +281,13 @@ func (m *MongoDBStore) SaveUser(user *UserMongoDocument) error {
 }
 
 // GetUserComments retrieves all comments stored in the user document that has the application-provided ID.
-func (m *MongoDBStore) GetUserComments(userID string) ([]UserComments, error) {
+func (m *MongoDBStore) GetUserComments(userID string) ([]pkg.UserComments, error) {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("users")
 
 	// Use the application-provided userID stored in the "ID" field.
 	filter := bson.M{"uuid": userID}
-	var userDoc UserMongoDocument
+	var userDoc pkg.UserMongoDocument
 	if err := collection.FindOne(context.TODO(), filter).Decode(&userDoc); err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, fmt.Errorf("no user found with ID %s", userID)
@@ -297,12 +299,12 @@ func (m *MongoDBStore) GetUserComments(userID string) ([]UserComments, error) {
 }
 
 // GetSongByID retrieves a song document from the "songs" collection using its song UUID or SongURI.
-func (m *MongoDBStore) GetSongByID(songID string) (*SongTypes, error) {
+func (m *MongoDBStore) GetSongByID(songID string) (*pkg.SongTypes, error) {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("songs")
 	fmt.Println("Looking for song with ID ", songID)
 	filter := bson.M{"songURI": songID}
-	var song SongTypes
+	var song pkg.SongTypes
 	if err := collection.FindOne(context.TODO(), filter).Decode(&song); err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, fmt.Errorf("no song found with id %s", songID)
@@ -317,13 +319,13 @@ func (m *MongoDBStore) GetSongByID(songID string) (*SongTypes, error) {
 // 1. Fetching the user document by the provided ID.
 // 2. Combining the song URIs from the Listened, LikedSongs, and DislikedSongs arrays.
 // 3. Querying the "songs" collection for documents with a matching songURI.
-func (m *MongoDBStore) GetUserSongs(userID string) ([]SongTypes, error) {
+func (m *MongoDBStore) GetUserSongs(userID string) ([]pkg.SongTypes, error) {
 	db := m.client.Database(DatabaseName)
 	usersCollection := db.Collection("users")
 
 	// Retrieve the user document using the application-provided ID.
 	filter := bson.M{"uuid": userID}
-	var userDoc UserMongoDocument
+	var userDoc pkg.UserMongoDocument
 	if err := usersCollection.FindOne(context.TODO(), filter).Decode(&userDoc); err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, fmt.Errorf("no user found with ID %s", userID)
@@ -345,7 +347,7 @@ func (m *MongoDBStore) GetUserSongs(userID string) ([]SongTypes, error) {
 
 	// **Fix: Ensure songIDs is not empty before querying**
 	if len(songIDs) == 0 {
-		var empty []SongTypes
+		var empty []pkg.SongTypes
 		return empty, nil // Return an empty list instead of querying MongoDB
 	}
 
@@ -359,9 +361,9 @@ func (m *MongoDBStore) GetUserSongs(userID string) ([]SongTypes, error) {
 	}
 	defer cursor.Close(context.TODO())
 
-	var songs []SongTypes
+	var songs []pkg.SongTypes
 	for cursor.Next(context.TODO()) {
-		var song SongTypes
+		var song pkg.SongTypes
 		if err := cursor.Decode(&song); err != nil {
 			return nil, fmt.Errorf("error decoding song document: %w", err)
 		}
@@ -375,7 +377,7 @@ func (m *MongoDBStore) GetUserSongs(userID string) ([]SongTypes, error) {
 }
 
 // handles duplicates as well
-func (m *MongoDBStore) InsertSong(song *SongTypes) error {
+func (m *MongoDBStore) InsertSong(song *pkg.SongTypes) error {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("songs")
 
@@ -426,7 +428,7 @@ func (m *MongoDBStore) InsertSong(song *SongTypes) error {
 	return nil
 }
 
-func (m *MongoDBStore) UpdateSong(song *SongTypes) error { return nil /* implementation */ }
+func (m *MongoDBStore) UpdateSong(song *pkg.SongTypes) error { return nil /* implementation */ }
 
 // DeleteSong deletes a song document from the "songs" collection using its SongURI.
 func (m *MongoDBStore) DeleteSong(songID string) error {
@@ -447,7 +449,7 @@ func (m *MongoDBStore) DeleteSong(songID string) error {
 }
 
 // Implement CommentStore methods
-func (m *MongoDBStore) SubmitComment(songID string, comment UserComments) error {
+func (m *MongoDBStore) SubmitComment(songID string, comment pkg.UserComments) error {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("songs")
 
@@ -475,9 +477,9 @@ func (m *MongoDBStore) SubmitComment(songID string, comment UserComments) error 
 
 	// If the song does not exist, create a new document
 	if updateResult.MatchedCount == 0 {
-		newSong := SongTypes{
+		newSong := pkg.SongTypes{
 			SongURI:       songID,
-			Comments:      []UserComments{comment},
+			Comments:      []pkg.UserComments{comment},
 			AlternateName: []string{},
 			UUID:          newID(),
 		}
@@ -496,16 +498,16 @@ func (m *MongoDBStore) SubmitComment(songID string, comment UserComments) error 
 }
 
 // GetComments returns all the comments for a given song identified by songID (SongURI) or UUID.
-func (m *MongoDBStore) GetComments(songID string) ([]UserComments, error) {
+func (m *MongoDBStore) GetComments(songID string) ([]pkg.UserComments, error) {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("songs")
 
 	filter := bson.M{"songURI": songID}
-	var song SongTypes
+	var song pkg.SongTypes
 	err := collection.FindOne(context.TODO(), filter).Decode(&song)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			var empty []UserComments
+			var empty []pkg.UserComments
 			return empty, nil
 			//return nil, fmt.Errorf("no song found with songURI: %s", songID)
 		}
@@ -517,7 +519,7 @@ func (m *MongoDBStore) GetComments(songID string) ([]UserComments, error) {
 
 // UpdateComment searches for a comment with a matching comment ID
 // and updates it to the newComment. Returns true if the comment was updated.
-func (m *MongoDBStore) UpdateComment(commentID string, newComment UserComments) (bool, error) {
+func (m *MongoDBStore) UpdateComment(commentID string, newComment pkg.UserComments) (bool, error) {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("songs")
 
@@ -563,7 +565,7 @@ func (m *MongoDBStore) DeleteComment(commentID string) error {
 }
 
 // GetComment retrieves a single comment by its comment ID.
-func (m *MongoDBStore) GetComment(commentID string) (*UserComments, error) {
+func (m *MongoDBStore) GetComment(commentID string) (*pkg.UserComments, error) {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("songs")
 
@@ -575,7 +577,7 @@ func (m *MongoDBStore) GetComment(commentID string) (*UserComments, error) {
 
 	// Use an inline struct to decode only the comments array.
 	var result struct {
-		Comments []UserComments `bson:"comments"`
+		Comments []pkg.UserComments `bson:"comments"`
 	}
 
 	err := collection.FindOne(context.TODO(), filter, opts).Decode(&result)
@@ -603,38 +605,38 @@ var (
 )
 
 // TODO: Beofore testing on other code base. just implement the below methods using the interfaces
-func SaveUser(user *UserMongoDocument) error {
+func SaveUser(user *pkg.UserMongoDocument) error {
 	fmt.Println("Attempting to save user info with name ", user.UserProfileResponse.DisplayName)
 	return database.SaveUser(user)
 }
 
 // for now just get working but later on there should be a slight level of
 // misdirection so that we can handle errors better
-func SubmitComment(songid string, comment UserComments) error {
+func SubmitComment(songid string, comment pkg.UserComments) error {
 	return database.SubmitComment(songid, comment)
 }
-func GetComments(songid string, limit, offset int) ([]UserComments, error) {
+func GetComments(songid string, limit, offset int) ([]pkg.UserComments, error) {
 	return database.GetComments(songid)
 }
 
 // find old and update it with new comment. if old cant be found return error
-func UpdateComment(oldCommentID string, new UserComments) (bool, error) {
+func UpdateComment(oldCommentID string, new pkg.UserComments) (bool, error) {
 	return database.UpdateComment(oldCommentID, new)
 }
 
-func GetComment(commentID string) (*UserComments, error) {
+func GetComment(commentID string) (*pkg.UserComments, error) {
 	return database.GetComment(commentID)
 }
 
 func DeleteComment(commentID string) error { return database.DeleteComment(commentID) }
 
 // if any of these return nil it means it wasnt found
-func GetUserDocument(userid string) (*UserMongoDocument, error) {
+func GetUserDocument(userid string) (*pkg.UserMongoDocument, error) {
 	return database.GetUserByID(userid)
 }
-func GetUserSongs(userid string) ([]SongTypes, error) {
+func GetUserSongs(userid string) ([]pkg.SongTypes, error) {
 	return database.GetUserSongs(userid)
 }
-func GetUserComments(userid string) ([]UserComments, error) {
+func GetUserComments(userid string) ([]pkg.UserComments, error) {
 	return database.GetUserComments(userid)
 }

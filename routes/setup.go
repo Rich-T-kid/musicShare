@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -33,7 +32,6 @@ func InitRoutes() *mux.Router {
 func temp(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		fmt.Println("Middleware Here just testing some things")
 		next.ServeHTTP(w, r)
 	})
 }

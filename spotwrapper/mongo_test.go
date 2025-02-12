@@ -9,6 +9,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/Rich-T-kid/musicShare/pkg"
 )
 
 // TestCache checks the basic functionality of the cache implementation
@@ -92,9 +94,9 @@ func TestUserStore(t *testing.T) {
 	// Generate a unique user ID.
 	userID := "richard"
 	// Create a sample user document.
-	user := &UserMongoDocument{
+	user := &pkg.UserMongoDocument{
 		UUID: userID,
-		Comments: []UserComments{
+		Comments: []pkg.UserComments{
 			{
 				Username: userID,
 				Rating:   5,
@@ -129,12 +131,12 @@ func TestUserStore(t *testing.T) {
 
 	// For GetUserSongs, we need to ensure that songs exist.
 	// Create three sample songs.
-	s1 := &SongTypes{SongURI: "song1", Comments: []UserComments{}}
-	s2 := &SongTypes{SongURI: "song2", Comments: []UserComments{}}
-	s3 := &SongTypes{SongURI: "song3", Comments: []UserComments{}}
+	s1 := &pkg.SongTypes{SongURI: "song1", Comments: []pkg.UserComments{}}
+	s2 := &pkg.SongTypes{SongURI: "song2", Comments: []pkg.UserComments{}}
+	s3 := &pkg.SongTypes{SongURI: "song3", Comments: []pkg.UserComments{}}
 
 	// Insert songs (using the InsertSong method, which handles duplicates via upsert).
-	for _, s := range []*SongTypes{s1, s2, s3} {
+	for _, s := range []*pkg.SongTypes{s1, s2, s3} {
 		if err := store.InsertSong(s); err != nil {
 			t.Fatalf("InsertSong failed for song %s: %v", s.SongURI, err)
 		}
@@ -163,9 +165,9 @@ func TestSongStore(t *testing.T) {
 	// Generate a unique song URI.
 	songURI := "SongTest" //"testSong-" + uuid.New().String()
 	testUUID := "CustomUUID"
-	song := &SongTypes{
+	song := &pkg.SongTypes{
 		SongURI:  songURI,
-		Comments: []UserComments{},
+		Comments: []pkg.UserComments{},
 		UUID:     testUUID,
 	}
 
@@ -199,9 +201,9 @@ func TestCommentStore(t *testing.T) {
 	// Generate a unique song URI for comment testing.
 	songURI := uuid.New().String()
 
-	song := &SongTypes{
+	song := &pkg.SongTypes{
 		SongURI:  songURI,
-		Comments: []UserComments{},
+		Comments: []pkg.UserComments{},
 	}
 	// Insert the song.
 	if err := store.InsertSong(song); err != nil {
@@ -210,7 +212,7 @@ func TestCommentStore(t *testing.T) {
 
 	// Submit a comment.
 	commentID := uuid.New().String()
-	comment := UserComments{
+	comment := pkg.UserComments{
 		UUID:     commentID,
 		Username: "commenter",
 		Rating:   4,

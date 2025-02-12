@@ -1,4 +1,4 @@
-module loveShare
+module github.com/Rich-T-kid/musicShare
 
 go 1.21.3
 
