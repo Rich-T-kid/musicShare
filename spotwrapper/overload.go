@@ -7,13 +7,12 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"musicShare/pkg"
+	"musicShare/pkg/logs"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/Rich-T-kid/musicShare/pkg"
-	"github.com/Rich-T-kid/musicShare/pkg/logs"
 )
 
 /*

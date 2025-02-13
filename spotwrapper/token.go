@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"musicShare/pkg"
 	"net/http"
 	"net/url"
-
-	"github.com/Rich-T-kid/musicShare/pkg"
 )
 
 // handle everything associated with tokens. Should be pretty small and low effort work since its already been done in route.go
