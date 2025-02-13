@@ -14,8 +14,8 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"github.com/Rich-T-kid/musicShare/pkg"
 	"github.com/Rich-T-kid/musicShare/pkg/logs"
+	"github.com/Rich-T-kid/musicShare/pkg/models"
 	sw "github.com/Rich-T-kid/musicShare/spotwrapper"
 )
 
@@ -105,7 +105,7 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 		cache.Set(ctx, key, "1", Month)
 	}
 
-	ctx = context.WithValue(ctx, pkg.UsernameKey{}, username) // Username is passed along to all request made here
+	ctx = context.WithValue(ctx, models.UsernameKey{}, username) // Username is passed along to all request made here
 	cache.StoreTokens(username, tokens.AccessToken, tokens.Refresh)
 	res, err := sw.NewUserProfile(ctx, tokens.AccessToken)
 	if err != nil {
@@ -182,9 +182,9 @@ func Test(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 	w.Write([]byte("Hello world"))
 }
-func getToken(code string) (pkg.TokenResponse, error) {
+func getToken(code string) (models.TokenResponse, error) {
 	var endpoint = "https://accounts.spotify.com/api/token"
-	var invalidResponse pkg.TokenResponse
+	var invalidResponse models.TokenResponse
 
 	// Correctly format client credentials
 	idSecretCombo := fmt.Sprintf("%s:%s", clientID, clientSecrete)
@@ -224,7 +224,7 @@ func getToken(code string) (pkg.TokenResponse, error) {
 		return invalidResponse, fmt.Errorf("error: response status code %d", resp.StatusCode)
 	}
 
-	var response pkg.TokenResponse
+	var response models.TokenResponse
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return invalidResponse, fmt.Errorf("error parsing response: %v", err)

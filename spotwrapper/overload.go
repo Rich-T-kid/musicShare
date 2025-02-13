@@ -7,12 +7,13 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"musicShare/pkg"
-	"musicShare/pkg/logs"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Rich-T-kid/musicShare/pkg/logs"
+	"github.com/Rich-T-kid/musicShare/pkg/models"
 )
 
 /*
@@ -85,7 +86,7 @@ func cloneRequest(req *http.Request) (*http.Request, error) {
 
 func (o *Overload) RetryRequest(ctx context.Context, req *http.Request) (*http.Response, error) {
 	delay := o.defaultDelay
-	userid, ok := ctx.Value(pkg.UsernameKey{}).(string)
+	userid, ok := ctx.Value(models.UsernameKey{}).(string)
 	if !ok {
 		logger.Critical("UserName was not properly set in the context.")
 		return nil, fmt.Errorf("UserName was not properly set in the context.context \n")

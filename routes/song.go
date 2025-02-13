@@ -8,7 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"github.com/Rich-T-kid/musicShare/pkg"
+	"github.com/Rich-T-kid/musicShare/pkg/models"
 	rec "github.com/Rich-T-kid/musicShare/reccomendations"
 	sw "github.com/Rich-T-kid/musicShare/spotwrapper"
 )
@@ -84,7 +84,7 @@ func Comments(w http.ResponseWriter, r *http.Request) {
 		logger.Warning(fmt.Sprintf("Error decoding requst body %e", err))
 		return
 	}
-	var request pkg.CommentsRequest
+	var request models.CommentsRequest
 	err = json.Unmarshal(bodyBytes, &request)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -138,7 +138,7 @@ func CommentsID(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(comment)
 	case "PUT":
-		var newComment pkg.UserComments
+		var newComment models.UserComments
 		bodyBytes, err := io.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)

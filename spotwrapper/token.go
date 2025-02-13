@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"musicShare/pkg"
 	"net/http"
 	"net/url"
+
+	"github.com/Rich-T-kid/musicShare/pkg/models"
 )
 
 // handle everything associated with tokens. Should be pretty small and low effort work since its already been done in route.go
@@ -18,7 +19,7 @@ var (
 )
 
 // handleing 401 responses
-func refreshEndPoint(refreshToken string) (*pkg.RefreshResponse, error) {
+func refreshEndPoint(refreshToken string) (*models.RefreshResponse, error) {
 	endpoint := "https://accounts.spotify.com/api/token"
 
 	headerAuth := IDComboHash64 // Assumes `IDComboHash64` is correctly set
@@ -47,7 +48,7 @@ func refreshEndPoint(refreshToken string) (*pkg.RefreshResponse, error) {
 	defer resp.Body.Close()
 
 	// Decode response
-	var response pkg.RefreshResponse
+	var response models.RefreshResponse
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
