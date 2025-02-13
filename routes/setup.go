@@ -29,6 +29,7 @@ func InitRoutes() *mux.Router {
 	return r
 }
 
+// middleware Mabey will be used in auth later
 func temp(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

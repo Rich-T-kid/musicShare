@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"loveShare/routes"
+	"github.com/Rich-T-kid/musicShare/routes"
 )
 
 var (

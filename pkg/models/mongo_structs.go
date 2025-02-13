@@ -14,3 +14,47 @@ type UserMongoDocument struct {
 	CreatedAt           time.Time           `json:"created_at" bson:"created_at"`
 	Updated             time.Time           `json:"updated" bson:"updated"`
 }
+
+type FollowedArtist struct {
+	Name    string   `json:"name"`
+	Spotify string   `json:"Spotify"`
+	Genres  []string `json:"genres"`
+	URI     string   `json:"uri"`
+}
+type Album struct {
+	Artist      string `json:"Artist"`
+	Name        string `json:"Name"`
+	AlbumLink   string `json:"AlbumLink"`
+	AlbumURI    string `json:"AlbumURI"`
+	AlbumID     string `json:"AlbumID"`
+	AlbumImage  Image  `json:"AlbumImage"`
+	AlbumName   string `json:"AlbumName"`
+	TotalTracks int    `json:"totalTracks"`
+	ReleaseDate string `json:"release_date"`
+}
+
+type Image struct {
+	URL string `json:"url"`
+}
+type UserMusicInfo struct {
+	FollowedArtist []FollowedArtist `json:"FollowedArtist"` // finsihed
+	TopTracks      UserTopTrack     `json:"TopTracks"`      // Finished
+	TopsArtist     []UserTopArtist  `json:"TopsArtist"`     // Finished
+}
+type UserTopTrack struct {
+	TopAlbums  []Album       `json:"TopAlbums"`
+	TopSingles []SingleTrack `json:"TopSinglesTracks"`
+}
+type SingleTrack struct {
+	Artist      string `json:"Artist"`
+	Name        string `json:"Name"`
+	TrackLink   string `json:"trackLink"`
+	TrackName   string `json:"TrackName"`
+	ReleaseDate string `json:"release_date"`
+}
+type TopsArtist struct {
+	Name        string   `json:"name"`
+	URI         string   `json:"uri"`
+	Genres      []string `json:"genres"`
+	ArtistPhoto string   `json:"ArtistPhoto"`
+}
