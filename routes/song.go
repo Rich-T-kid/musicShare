@@ -9,7 +9,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/Rich-T-kid/musicShare/pkg/models"
-	rec "github.com/Rich-T-kid/musicShare/reccomendations"
+	client "github.com/Rich-T-kid/musicShare/reccomendations/grpc"
 	sw "github.com/Rich-T-kid/musicShare/spotwrapper"
 )
 
@@ -52,7 +52,9 @@ func Song(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 4) Business logic: generate a new song
-		song, err := rec.NewSong(requestJson.UserName, requestJson.ExcludeList)
+		ctx := r.Context()
+		songs, err := client.GetReccomendations(ctx, requestJson.UserName)
+		//song, err := rec.NewSong(requestJson.UserName, requestJson.ExcludeList)
 		if err != nil {
 			logger.Warning(fmt.Sprintf("Error generating 'New Song of the day' for user %s: %v", requestJson.UserName, err))
 			w.WriteHeader(http.StatusInternalServerError)
@@ -61,11 +63,8 @@ func Song(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 5) Return success
-		response := map[string]string{
-			"SpotifyURI": song,
-		}
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
+		json.NewEncoder(w).Encode(songs)
 
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
