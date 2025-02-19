@@ -4,11 +4,10 @@
 // - protoc             v3.12.4
 // source: song.proto
 
-package pb
+package __
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

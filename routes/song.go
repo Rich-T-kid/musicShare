@@ -43,6 +43,7 @@ func Song(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("Malformed JSON body"))
 			return // Early return
 		}
+		fmt.Printf("Recived Request body %+v", requestJson)
 		//cache := userNamecache
 		if requestJson.UserName == "" { //|| cache.Exist(r.Context(),fmt.Sprintf("UniqueUserName:%s",requestJson.UserName)){
 			logger.Info("Songs endpoint: empty or invalid UserName field")
@@ -54,7 +55,6 @@ func Song(w http.ResponseWriter, r *http.Request) {
 		// 4) Business logic: generate a new song
 		ctx := r.Context()
 		songs, err := client.GetReccomendations(ctx, requestJson.UserName)
-		//song, err := rec.NewSong(requestJson.UserName, requestJson.ExcludeList)
 		if err != nil {
 			logger.Warning(fmt.Sprintf("Error generating 'New Song of the day' for user %s: %v", requestJson.UserName, err))
 			w.WriteHeader(http.StatusInternalServerError)

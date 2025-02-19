@@ -58,3 +58,9 @@ type TopsArtist struct {
 	Genres      []string `json:"genres"`
 	ArtistPhoto string   `json:"ArtistPhoto"`
 }
+type UserTopArtist struct {
+	Name        string   `json:"name"`
+	URI         string   `json:"uri"`
+	Genres      []string `json:"genres"`
+	ArtistPhoto string   `json:"ArtistPhoto"`
+}
