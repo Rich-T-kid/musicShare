@@ -7,12 +7,9 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
-
-	"github.com/gorilla/mux"
 
 	"github.com/Rich-T-kid/musicShare/pkg/logs"
 	"github.com/Rich-T-kid/musicShare/pkg/models"
@@ -70,7 +67,7 @@ func RedirectPage(w http.ResponseWriter, r *http.Request) {
 }
 
 // html template
-func SongofDay(w http.ResponseWriter, r *http.Request) {
+func Callback(w http.ResponseWriter, r *http.Request) {
 	u, err := url.Parse(r.URL.String())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -78,11 +75,14 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 	}
 	QV := u.Query()
 	code := QV.Get("code")
-	username := QV.Get("state")
+	state := QV.Get("state")
 	spotifyError := QV.Get("error")
+	if state != randomString {
+		http.Error(w, "invalid state code returned by spotify", http.StatusUnauthorized)
+		return
+	}
 	if spotifyError != "" {
 		http.Error(w, "Error occurred with Spotify login", http.StatusBadRequest)
-		logger.Warning(fmt.Sprintf("userid: %s has encountered a Spotify callback error: %s", username, spotifyError))
 		return
 	}
 
@@ -97,23 +97,28 @@ func SongofDay(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Error getting access token:", err)
 		return
 	}
+
 	ctx := context.Background()
 	cache := userNamecache
-	key := fmt.Sprintf("UniqueUserName:%s", username)
+	userProfileData := sw.GetUserData(ctx, tokens.AccessToken)
+	var username = userProfileData.DisplayName
+	key := fmt.Sprintf("UserName:%s", username)
 	if !cache.Exist(ctx, key) {
-		fmt.Printf("key -> %s did not already exist Setting it now\n", key)
-		cache.Set(ctx, key, "1", Month)
+		cache.Set(ctx, key, "exist", Month)
 	}
-
-	ctx = context.WithValue(ctx, models.UsernameKey{}, username) // Username is passed along to all request made here
+	// TODO: Fix this later. right now reddis/mongoDB is acting dumb
+	//ctx = context.WithValue(ctx, models.UsernameKey{}, username) // Username is passed along to all request made here
 	cache.StoreTokens(username, tokens.AccessToken, tokens.Refresh)
-	res, err := sw.NewUserProfile(ctx, tokens.AccessToken)
-	if err != nil {
-		log.Fatal(err)
+	/*userDoc , err := sw.NewUserProfile(ctx, tokens.AccessToken)
+	if err != nil{
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("Inter Server error occured attempting to construct users mongoDB document, username : %s",username)))
 	}
-	sw.SaveUser(res)
-
-	http.Redirect(w, r, "/loveShare", http.StatusSeeOther)
+	//
+	fmt.Printf("user %s's MongoDB document was generated with a uuid of %s",userDoc.UserProfileResponse.DisplayName,userDoc.UUID)
+	*/
+	fmt.Println("generated new access and refresh tokens,store the in cache and generated full user profile")
+	json.NewEncoder(w).Encode(userProfileData)
 }
 
 func LoveShare(w http.ResponseWriter, r *http.Request) {
@@ -137,12 +142,7 @@ func LoveShare(w http.ResponseWriter, r *http.Request) {
 func RedirectLink(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var baseURL = "https://accounts.spotify.com/authorize"
-	var username = r.Header.Get("X-username")
-	if username == "" {
-		w.WriteHeader(400)
-		w.Write([]byte("Username must be provider in the headers as X-username : {Username}"))
-		return
-	}
+	var username = randomString
 	params := url.Values{}
 	params.Add("client_id", clientID)
 	params.Add("response_type", "code")
@@ -218,7 +218,7 @@ func getToken(code string) (models.TokenResponse, error) {
 
 	// Read response body
 	body, _ := io.ReadAll(resp.Body)
-	fmt.Printf("Response Status: %d\nResponse Body: %s\n", resp.StatusCode, string(body))
+	fmt.Printf("Token Response Status: %d\n", resp.StatusCode)
 
 	if resp.StatusCode != http.StatusOK {
 		return invalidResponse, fmt.Errorf("error: response status code %d", resp.StatusCode)
@@ -231,36 +231,4 @@ func getToken(code string) (models.TokenResponse, error) {
 	}
 
 	return response, nil
-}
-
-// just returns a access token and that tokens expiration time
-
-type Response struct {
-	Message string `json:"message"`
-}
-
-func UniqueUsername(w http.ResponseWriter, r *http.Request) {
-	cache := userNamecache
-	w.Header().Set("Content-Type", "application/json") // Ensure JSON response
-
-	vars := mux.Vars(r)
-	name, exists := vars["name"]
-	if !exists {
-		http.Error(w, `{"message": "Missing parameter"}`, http.StatusBadRequest)
-		return
-	}
-
-	ctx := context.Background()
-	validUsername := cache.Get(ctx, fmt.Sprintf("UniqueUserName:%s", name))
-
-	var resp Response
-	if validUsername == "" {
-		w.WriteHeader(http.StatusOK)
-		resp.Message = fmt.Sprintf("Username %s is available", name)
-	} else {
-		w.WriteHeader(http.StatusConflict)
-		resp.Message = fmt.Sprintf("Username %s already exists. Choose another one", name)
-	}
-
-	json.NewEncoder(w).Encode(resp) // Encode response as JSON
 }

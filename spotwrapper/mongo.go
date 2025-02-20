@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/go-redis/redis"
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
+	"github.com/Rich-T-kid/musicShare/pkg"
 	"github.com/Rich-T-kid/musicShare/pkg/models"
 )
 
@@ -37,6 +37,7 @@ type spotish[T comparable, V any] struct {
 }
 
 // Function to initialize a new Redis client
+// TODO: Change this to the docker container later
 func newSpotCache[T comparable, V any]() *spotish[T, V] {
 	client := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
@@ -91,7 +92,7 @@ func (s *spotish[T, V]) Exist(ctx context.Context, key string) bool {
 	return exists > 0
 }
 func (s *spotish[T, V]) StoreTokens(userID, accessToken, refreshToken string) error {
-	key := fmt.Sprintf("user:%s", userID) // Store by user ID
+	key := fmt.Sprintf("user-token:%s", userID) // Store by user ID
 
 	err := s.client.HSet(key, "access_token", accessToken).Err()
 	if err != nil {
@@ -109,7 +110,7 @@ func (s *spotish[T, V]) StoreTokens(userID, accessToken, refreshToken string) er
 
 func (s *spotish[T, V]) GetTokens(userID string) (string, string, error) {
 
-	key := fmt.Sprintf("user:%s", userID)
+	key := fmt.Sprintf("user-token:%s", userID)
 
 	// Fetch both access and refresh tokens
 	accessToken, err := s.client.HGet(key, "access_token").Result()
@@ -174,6 +175,7 @@ Mongo DB implementation below
 */
 func newDocumentStore() DocumentStore {
 	// Define MongoDB connection URI (matches Docker container settings)
+	return nil
 	mongoURI := "mongodb://admin:secretpassword@localhost:27017/"
 
 	// Set client options
@@ -454,9 +456,8 @@ func (m *MongoDBStore) SubmitComment(songID string, comment models.UserComments)
 	collection := db.Collection("songs")
 
 	// Ensure the comment has a UUID
-	if comment.UUID == "" {
-		comment.UUID = newID()
-	}
+	// more imporantly every comment needs to have a new and unique uuid so we cant rely on what gets passed in
+	comment.UUID = newID()
 	comment.SongID = songID
 
 	// Filter to check if the song exists
@@ -594,7 +595,7 @@ func (m *MongoDBStore) GetComment(commentID string) (*models.UserComments, error
 	return &result.Comments[0], nil
 }
 func newID() string {
-	return uuid.New().String()
+	return pkg.NewUUID()
 }
 
 /*
@@ -610,6 +611,7 @@ func SaveUser(user *models.UserMongoDocument) error {
 	return database.SaveUser(user)
 }
 
+// Assume that anything that has a suffix of id is referring to a uuid, unless otherwise specified
 // for now just get working but later on there should be a slight level of
 // misdirection so that we can handle errors better
 func SubmitComment(songid string, comment models.UserComments) error {
