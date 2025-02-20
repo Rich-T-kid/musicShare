@@ -1,261 +1,579 @@
-openapi: 3.0.0
+openapi: "3.0.3"
 info:
-  title: LoveShare API
-  description: API documentation for LoveShare, a music-sharing platform integrated with Spotify.
-  version: 1.0.0
+  title: Music Share API
+  version: "1.0.0"
+  description: |
+    This API provides endpoints for:
+    - Generating and retrieving songs of the day
+    - Managing comments on songs
+    - Retrieving user documents, songs, and comments
+    - Initiating Spotify login and callback flows
+
 servers:
   - url: http://localhost:8080
-    description: Local development server
+
 paths:
-  /test:
-    get:
-      summary: Test endpoint
-      responses:
-        '200':
-          description: Successful response
-  /login:
-    get:
-      summary: Renders the login page
-      responses:
-        '200':
-          description: HTML login page
-  /signIn:
-    post:
-      summary: Handles user sign-in
-      responses:
-        '200':
-          description: Redirects to /auth on success
-  /link:
-    get:
-      summary: Provides a Spotify login link
-      responses:
-        '200':
-          description: JSON response with login URL
-  /callback:
-    get:
-      summary: Handles Spotify OAuth callback
-      parameters:
-        - name: code
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: state
-          in: query
-          required: false
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Redirects to /loveShare on success
-  /loveShare:
-    get:
-      summary: Renders the LoveShare homepage
-      responses:
-        '200':
-          description: HTML page with song of the day
-  /auth:
-    get:
-      summary: Renders the authentication page
-      responses:
-        '200':
-          description: Authentication page
   /songs:
-    get:
-      summary: Fetch all songs
-      responses:
-        '200':
-          description: Returns a list of songs
     post:
-      summary: Generate a new song recommendation
+      summary: Generate "Song of the Day"
+      description: |
+        Creates a new "Song of the Day" for a given username. 
+        Expects a JSON body with "username".
+      tags:
+        - Songs
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SongRequest'
+              $ref: "#/components/schemas/SongRequest"
       responses:
-        '200':
-          description: Returns recommended song
+        "200":
+          description: OK - Returns an array of recommended songs.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  description: A recommended song object (implementation-specific).
+                  type: object
+        "400":
+          description: Bad Request - Malformed JSON or invalid username.
+        "405":
+          description: Method Not Allowed
+        "500":
+          description: Internal Server Error
+
   /comments:
     get:
-      summary: Fetch all comments
-      responses:
-        '200':
-          description: List of comments
-    post:
-      summary: Submit a comment
+      summary: Retrieve comments for a song
+      description: |
+        **Note**: This endpoint expects a JSON body (unusual for GET) containing the songID.  
+        Returns all comments associated with the given song URI.
+      tags:
+        - Comments
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CommentsRequest'
+              $ref: "#/components/schemas/CommentsRequest"
       responses:
-        '200':
-          description: Comment submitted successfully
+        "200":
+          description: OK - Returns an array of comments for the specified song.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserComments"
+        "400":
+          description: Bad Request - Malformed JSON.
+        "500":
+          description: Internal Server Error
+        "405":
+          description: Method Not Allowed
+
+    post:
+      summary: Submit a comment for a song
+      description: |
+        Creates a new comment for a given song.  
+        Expects a JSON body containing "songID" and "userComment".
+      tags:
+        - Comments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentsRequest"
+      responses:
+        "200":
+          description: OK - Comment successfully submitted (no response body).
+        "400":
+          description: Bad Request - Malformed JSON or invalid data.
+        "500":
+          description: Internal Server Error
+        "405":
+          description: Method Not Allowed
+
   /comments/{comment_id}:
     get:
-      summary: Fetch a specific comment
+      summary: Get a specific comment by ID
+      tags:
+        - Comments
       parameters:
-        - name: comment_id
-          in: path
+        - in: path
+          name: comment_id
           required: true
           schema:
             type: string
+          description: The unique ID of the comment
       responses:
-        '200':
-          description: Comment details
+        "200":
+          description: OK - Returns the specified comment object.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserComments"
+        "500":
+          description: Internal Server Error - Comment not found or other issue
+        "405":
+          description: Method Not Allowed
+
     put:
-      summary: Update a comment
+      summary: Update a comment by ID
+      description: |
+        Updates the `review` or `rating` of an existing comment.  
+        Expects JSON body with the new fields (`username`, `rating`, `review`, etc.).
+      tags:
+        - Comments
+      parameters:
+        - in: path
+          name: comment_id
+          required: true
+          schema:
+            type: string
+          description: The unique ID of the comment
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserComments'
+              $ref: "#/components/schemas/UserComments"
       responses:
-        '200':
-          description: Comment updated successfully
+        "200":
+          description: OK - Returns a message indicating whether the comment was found and updated.
+          content:
+            text/plain:
+              schema:
+                type: string
+        "400":
+          description: Bad Request - Malformed JSON or invalid data
+        "500":
+          description: Internal Server Error
+        "405":
+          description: Method Not Allowed
+
     delete:
-      summary: Delete a comment
+      summary: Delete a comment by ID
+      tags:
+        - Comments
+      parameters:
+        - in: path
+          name: comment_id
+          required: true
+          schema:
+            type: string
+          description: The unique ID of the comment
       responses:
-        '200':
-          description: Comment deleted successfully
+        "200":
+          description: OK - Comment deleted successfully (no response body).
+        "500":
+          description: Internal Server Error
+        "405":
+          description: Method Not Allowed
+
   /users/{user_id}:
     get:
-      summary: Fetch user profile
+      summary: Retrieve a user's MongoDB document
+      description: |
+        Returns the entire user document (music info, user profile, etc.) from MongoDB.
+      tags:
+        - Users
       parameters:
-        - name: user_id
-          in: path
+        - in: path
+          name: user_id
           required: true
           schema:
             type: string
+          description: The unique user ID
       responses:
-        '200':
-          description: User profile details
+        "200":
+          description: OK - Returns the user MongoDB document.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMongoDocument"
+        "400":
+          description: Bad Request - Invalid user ID or missing data
+        "405":
+          description: Method Not Allowed
+
   /users/{user_id}/songs:
     get:
-      summary: Fetch user's listened and liked songs
+      summary: Retrieve songs for a user
+      description: |
+        Returns a list of songs or listening history for the specified user.
+      tags:
+        - Users
       parameters:
-        - name: user_id
-          in: path
+        - in: path
+          name: user_id
           required: true
           schema:
             type: string
       responses:
-        '200':
-          description: List of user's songs
+        "200":
+          description: OK - Returns user songs (array of objects).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SongTypes"
+        "400":
+          description: Bad Request
+        "405":
+          description: Method Not Allowed
+
   /users/{user_id}/comments:
     get:
-      summary: Fetch user's comments
+      summary: Retrieve comments made by a user
+      tags:
+        - Users
       parameters:
-        - name: user_id
-          in: path
+        - in: path
+          name: user_id
           required: true
           schema:
             type: string
+          description: The unique user ID
       responses:
-        '200':
-          description: List of user's comments
-  /exist/{name}:
+        "200":
+          description: OK - Returns an array of comments made by this user.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserComments"
+        "400":
+          description: Bad Request
+        "405":
+          description: Method Not Allowed
+
+  /test:
     get:
-      summary: Check if username exists
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
+      summary: Simple test endpoint
+      description: Returns "Hello world"
+      tags:
+        - Utility
       responses:
-        '200':
-          description: Username availability
+        "200":
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /link:
+    get:
+      summary: Generate Spotify login link
+      description: |
+        Returns a JSON object containing a URL that the user can follow to log in with Spotify.  
+        Example response: `{"link": "https://accounts.spotify.com/authorize?..."}`
+      tags:
+        - Auth
+      responses:
+        "200":
+          description: OK - Returns JSON with `link`
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  link:
+                    type: string
+
+  /callback:
+    get:
+      summary: Spotify callback endpoint
+      description: |
+        Used by Spotify to redirect back to this application after user login.  
+        Handles the auth code, state check, and retrieves access/refresh tokens.
+      tags:
+        - Auth
+      responses:
+        "200":
+          description: OK - Returns user profile data as JSON
+        "400":
+          description: Bad Request - Missing or invalid code, or user refused
+        "401":
+          description: Unauthorized - State mismatch
+        "500":
+          description: Internal Server Error
+
+  /login:
+    get:
+      summary: Displays login HTML page
+      description: Renders `templates/login.html`.
+      tags:
+        - HTML
+      responses:
+        "200":
+          description: HTML login page
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /auth:
+    get:
+      summary: Displays redirect HTML page
+      description: Renders `templates/index.html`.
+      tags:
+        - HTML
+      responses:
+        "200":
+          description: HTML redirect page
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /loveShare:
+    get:
+      summary: Renders the "Song of the Day" HTML page
+      tags:
+        - HTML
+      responses:
+        "200":
+          description: HTML template
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /signIn:
+    post:
+      summary: Sign-In (example flow)
+      description: |
+        Redirects the user to `/auth` upon success.  
+        Not a typical JSON-based API endpoint; it returns a redirect (303/SeeOther).
+      tags:
+        - Auth
+      responses:
+        "303":
+          description: Redirect to `/auth`
+        "405":
+          description: Method Not Allowed
+
 components:
   schemas:
-    CommentsRequest:
-      type: object
-      properties:
-        songID:
-          type: string
-        userComment:
-          $ref: '#/components/schemas/UserComments'
-    UserComments:
-      type: object
-      properties:
-        username:
-          type: string
-        rating:
-          type: integer
-          format: int8
-        review:
-          type: string
-        songID:
-          type: string
-        ID:
-          type: string
+    # Body used by POST /songs
     SongRequest:
       type: object
       properties:
         username:
           type: string
-        unwanted_tracks:
-          type: array
-          items:
-            type: string
+          description: "Spotify username or some unique user identifier"
+      required:
+        - username
+
+    # Body used by GET/POST /comments
+    CommentsRequest:
+      type: object
+      properties:
+        songID:
+          type: string
+          description: "URI or unique identifier for the song"
+        userComment:
+          $ref: "#/components/schemas/UserComments"
+      required:
+        - songID
+        - userComment
+
+    # Represents a single comment
+    UserComments:
+      type: object
+      properties:
+        username:
+          type: string
+          description: "User who made the comment"
+        rating:
+          type: integer
+          format: int32
+          description: "Rating out of 5"
+        review:
+          type: string
+          description: "Comment text"
+        songID:
+          type: string
+          description: "Song URI or ID"
+        ID:
+          type: string
+          description: "Unique identifier for the comment"
+      required:
+        - username
+        - rating
+        - review
+
+    # For storing and retrieving user data
     UserMongoDocument:
       type: object
       properties:
         ID:
           type: string
+          description: "UUID of the user"
         user_profile_response:
-          $ref: '#/components/schemas/UserProfileResponse'
+          $ref: "#/components/schemas/UserProfileResponse"
         user_music_info:
-          $ref: '#/components/schemas/UserMusicInfo'
+          $ref: "#/components/schemas/UserMusicInfo"
+        music_share_playlist:
+          $ref: "#/components/schemas/MusicSharePlaylist"
+        use_comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserComments"
         liked_songs:
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/SpotifyURI"
         disliked_songs:
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/SpotifyURI"
         listened:
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/SpotifyURI"
+        created_at:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+
+    # Example model references for completeness
     UserProfileResponse:
       type: object
       properties:
-        country:
+        displayName:
           type: string
-        display_name:
-          type: string
-        email:
-          type: string
-        images:
-          type: array
-          items:
-            type: object
-            properties:
-              url:
-                type: string
+        # Add more fields as needed based on your actual response
+
     UserMusicInfo:
       type: object
       properties:
         FollowedArtist:
           type: array
           items:
-            $ref: '#/components/schemas/FollowedArtist'
+            $ref: "#/components/schemas/FollowedArtist"
+        TopTracks:
+          $ref: "#/components/schemas/UserTopTrack"
+        TopsArtist:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserTopArtist"
+
     FollowedArtist:
+      type: object
+      properties:
+        Name:
+          type: string
+        Spotify:
+          type: string
+        Genres:
+          type: array
+          items:
+            type: string
+        uri:
+          type: string
+
+    UserTopTrack:
+      type: object
+      properties:
+        TopAlbums:
+          type: array
+          items:
+            $ref: "#/components/schemas/Album"
+        TopSinglesTracks:
+          type: array
+          items:
+            $ref: "#/components/schemas/SingleTrack"
+
+    Album:
+      type: object
+      properties:
+        Artist:
+          type: string
+        Name:
+          type: string
+        AlbumLink:
+          type: string
+        AlbumURI:
+          type: string
+        AlbumID:
+          type: string
+        AlbumImage:
+          $ref: "#/components/schemas/Image"
+        AlbumName:
+          type: string
+        totalTracks:
+          type: integer
+        release_date:
+          type: string
+
+    SingleTrack:
+      type: object
+      properties:
+        Artist:
+          type: string
+        Name:
+          type: string
+        trackLink:
+          type: string
+        TrackName:
+          type: string
+        release_date:
+          type: string
+
+    UserTopArtist:
       type: object
       properties:
         name:
           type: string
-        Spotify:
+        uri:
           type: string
         genres:
           type: array
           items:
             type: string
-        URI:
+        ArtistPhoto:
           type: string
+
+    MusicSharePlaylist:
+      type: object
+      properties:
+        # Fill this in according to your actual fields if needed
+        # Example:
+        playlistID:
+          type: string
+
+    SpotifyURI:
+      type: string
+      description: "Represents a Spotify song/album/artist URI"
+
+    Image:
+      type: object
+      properties:
+        url:
+          type: string
+
+    SongTypes:
+      type: object
+      properties:
+        songURI:
+          type: string
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserComments"
+        alternateName:
+          type: array
+          items:
+            type: string
+        uuid:
+          type: string
+

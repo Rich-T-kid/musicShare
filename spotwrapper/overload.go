@@ -88,6 +88,7 @@ func (o *Overload) RetryRequest(ctx context.Context, req *http.Request) (*http.R
 	delay := o.defaultDelay
 	userid, ok := ctx.Value(models.UsernameKey{}).(string)
 	if !ok {
+		fmt.Println("error in overloader")
 		logger.Critical("UserName was not properly set in the context.")
 		return nil, fmt.Errorf("UserName was not properly set in the context.context \n")
 	}

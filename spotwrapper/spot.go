@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Rich-T-kid/musicShare/pkg"
 	"github.com/Rich-T-kid/musicShare/pkg/models"
 )
 
@@ -59,8 +60,8 @@ func GetUserData(ctx context.Context, token string) *models.UserProfileResponse 
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	// Execute the request
-
-	resp, err := proxy.RetryRequest(ctx, req) //http.DefaultClient.Do(req)
+	//  WARNING: DO not replace with proxy. need to grab username before setting it in context
+	resp, err := http.DefaultClient.Do(req)
 	handleError(err, "http.DefaultClient.Do")
 	defer resp.Body.Close()
 
@@ -516,6 +517,7 @@ func NewMusicPlaylist(playlistID string) *models.MusicSharePlaylist {
 }
 func NewDBDocument(userProfile models.UserProfileResponse, userMusicInfo models.UserMusicInfo, playlist models.MusicSharePlaylist) *models.UserMongoDocument {
 	return &models.UserMongoDocument{
+		UUID:                pkg.NewUUID(),
 		UserProfileResponse: userProfile,
 		UserMusicInfo:       userMusicInfo,
 		MusicSharePlaylist:  playlist,
@@ -536,6 +538,7 @@ func NewUserProfile(ctx context.Context, token string) (*models.UserMongoDocumen
 	// Retrieve the user ID from context
 	userID, ok := ctx.Value(models.UsernameKey{}).(string)
 	if !ok {
+		fmt.Println("error in spot.go file")
 		return nil, fmt.Errorf("username was not properly set in the context")
 	}
 	fmt.Printf("Finished processing new user %s at %v\n", userID, currentTime)

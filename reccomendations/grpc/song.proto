@@ -20,7 +20,7 @@ message SongResponse {
 }
 
 message songBody{
-  string name = 1;
+  string name = 1;// song name
   string artist = 2;
   string song_uri = 3; // for now this will only be spotify but just in case we add others later
   uint32 rank = 4;

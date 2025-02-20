@@ -1,15 +1,24 @@
 {
-    "objectID":"string",
-    "songURI":"string",
-    "comments":[
-        {
-        "username":"string",
-        "rating":5,
-        "review":"review Text"
-        },
-        {"username":"string",
-        "rating":5,
-        "review":"review Text"
-        }
-    ]
+  "songURI": "spotify:track:6rqhFgbbKwnb9MLmUQDhG6",
+  "comments": [
+    {
+      "username": "Bob",
+      "rating": 5,
+      "review": "Incredible melody!",
+      "songID": "spotify:track:6rqhFgbbKwnb9MLmUQDhG6",
+      "ID": "comment-1234"
+    },
+    {
+      "username": "Alice",
+      "rating": 3,
+      "review": "It was okay, not my favorite.",
+      "songID": "spotify:track:6rqhFgbbKwnb9MLmUQDhG6",
+      "ID": "comment-5678"
+    }
+  ],
+  "alternateName": [
+    "Random Alternate Title",
+    "Another Name"
+  ],
+  "uuid": "song-uuid-8901"
 }
