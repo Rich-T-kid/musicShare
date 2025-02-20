@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -18,7 +19,7 @@ func InitRoutes() *mux.Router {
 	r.HandleFunc("/callback", SongofDay).Methods("GET")                                // HTML
 	r.HandleFunc("/loveShare", LoveShare).Methods("GET")                               // HTML
 	r.HandleFunc("/auth", RedirectPage).Methods("GET")                                 // HTML
-	r.HandleFunc("/songs", Song).Methods("GET")                                        // API
+	r.HandleFunc("/songs", Song).Methods("POST")                                       // API
 	r.HandleFunc("/comments", Comments).Methods("GET", "POST", "PUT", "DELETE")        // API
 	r.HandleFunc("/comments/{comment_id}", CommentsID).Methods("GET", "PUT", "DELETE") // API
 	r.HandleFunc("/users/{user_id}", UserID).Methods("GET")                            // return user json document                            // API
@@ -32,7 +33,7 @@ func InitRoutes() *mux.Router {
 // middleware Mabey will be used in auth later
 func temp(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
+		fmt.Printf("url: %s Method: %s ", r.URL.Path, r.Method)
 		next.ServeHTTP(w, r)
 	})
 }

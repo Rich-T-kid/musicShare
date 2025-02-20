@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package songRecommendation;
+
+option go_package = ".";
+
+
+service SongService {
+  // takes in userID and returns an array of posssible songs of the day, specific to that user based on prefrences
+  rpc GetSong(SongRequest) returns (SongResponse) {}
+  
+}
+
+message SongRequest {
+  string user_id = 1;  // uuid Associated will user in MongoDB
+}
+
+message SongResponse {
+  repeated songBody songs = 1;
+}
+
+message songBody{
+  string name = 1;
+  string artist = 2;
+  string song_uri = 3; // for now this will only be spotify but just in case we add others later
+  uint32 rank = 4;
+}

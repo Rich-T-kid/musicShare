@@ -53,12 +53,6 @@ type PlaylistAddtionRequest struct {
 	URI      []string `json:"uris"`
 	Position int      `json:"position"`
 }
-type UserTopArtist struct {
-	Name        string   `json:"name"`
-	URI         string   `json:"uri"`
-	Genres      []string `json:"genres"`
-	ArtistPhoto string   `json:"ArtistPhoto"`
-}
 
 type UserProfileResponse struct {
 	Country     string `json:"country"`
