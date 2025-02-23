@@ -1,82 +1,76 @@
 {
-  "id":"string",
-  "UserInfo": {
-    "country": "string",
-    "display_name": "string",
-    "email": "string",
-    "id": "string"
+  "ID": "123e4567-e89b-12d3-a456-426614174000",
+  "user_profile_response": {
+    "displayName": "Alice",
+    "country": "US",
+    "email": "alice@example.com",
+    "id": "alice_spotify_id"
   },
-  "UserMusicInfo": {
+  "user_music_info": {
     "FollowedArtist": [
       {
-        "name": "string",
-        "Spotify": "string",
-        "genres": [
-          "melodic rap"
-        ],
-        "uri": "spotify:artist:<SpotifyID>"
+        "Name": "Taylor Swift",
+        "Spotify": "https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02",
+        "Genres": ["pop", "country"],
+        "uri": "spotify:artist:06HL4z0CvFAxyc27GXpf02"
       }
     ],
-    "TopTracks": [
-      {
-        "TopAlbums": [
-          {
-            "Artist": "spotifyURI",
-            "Name": "artistName",
-            "AlbumLink": "SpotifyLinks",
-            "AlbumURI": "string",
-            "AlbumID": "ID",
-            "AlbumImage": {
-              "url": "link"
-            },
-            "AlbumName": "string",
-            "totalTracks": 10,
-            "release_date": "2024-06-14"
-          }
-        ],
-        "TopSinglesTracks": [
-          {
-            "Artist": "spotifyURI",
-            "Name": "artistName",
-            "trackLink": "Spotifylink",
-            "TrackName": "string",
-            "release_date": "2023-07-07"
-          }
-        ]
-      }
-    ],
+    "TopTracks": {
+      "TopAlbums": [
+        {
+          "Artist": "The Beatles",
+          "Name": "Abbey Road",
+          "AlbumLink": "https://open.spotify.com/album/0ETFjACtuP2ADo6LFhL6HN",
+          "AlbumURI": "spotify:album:0ETFjACtuP2ADo6LFhL6HN",
+          "AlbumID": "0ETFjACtuP2ADo6LFhL6HN",
+          "AlbumImage": {
+            "url": "https://i.scdn.co/image/ab67616d0000b273beatlesabbeyroad"
+          },
+          "AlbumName": "Abbey Road",
+          "totalTracks": 17,
+          "release_date": "1969-09-26"
+        }
+      ],
+      "TopSinglesTracks": [
+        {
+          "Artist": "Daft Punk",
+          "Name": "One More Time",
+          "trackLink": "https://open.spotify.com/track/1liMWRcv5wWS5iDPs6RiVg",
+          "TrackName": "One More Time",
+          "release_date": "2000-11-30"
+        }
+      ]
+    },
     "TopsArtist": [
       {
-        "name": "string",
-        "uri": "spotify:artist:5tQMB0cuNXdCtzovGt55uD",
-        "genres": [
-          "cloud rap"
-        ],
-        "ArtistPhoto": {
-          "url": "string"
-        }
+        "name": "Drake",
+        "uri": "spotify:artist:3TVXtAsR1Inumwj472S9r4",
+        "genres": ["hip hop", "rap"],
+        "ArtistPhoto": "https://i.scdn.co/image/drake_photo"
       }
     ]
   },
-  "MusicSharePlaylist": {
-    "playlistName": "MusicShareTopSongs",
-    "Songs": [
-      {
-        "songID": "date"
-      }
-    ]
+  "music_share_playlist": {
+    "playlistID": "37i9dQZF1DXcBWIGoYBM5M"
   },
-  "comments":[{
-  "username": "JohnDoe",
-  "rating": 5,
-  "review": "This song is amazing! Highly recommend it.",
-  "songID":"spotify:track:79rneIpoGKwhqE1MSaw4Ls"
-},{
-  "username": "jakePaul",
-  "rating": 2,
-  "review": "absoluteTrash",
-  "songID":"spotify:track:79rneIpoGKwhqE1MSaw4Ls"
-}],
-"likedSongs": ["SpotifyID","SpotifyID","SpotifyID","SpotifyID"],
-  "dislikedSongs":["SpotifyID","SpotifyID","SpotifyID","SpotifyID"]
+  "use_comments": [
+    {
+      "username": "Alice",
+      "rating": 4,
+      "review": "Really enjoyed this track!",
+      "songID": "spotify:track:4cOdK2wGLETKBW3PvgPWqT",
+      "ID": "cmt-9912"
+    }
+  ],
+  "liked_songs": [
+    "spotify:track:7ouMYWpwJ422jRcDASZB7P"
+  ],
+  "disliked_songs": [
+    "spotify:track:56Z9C88tZP3NgYGRxpRzW9"
+  ],
+  "listened": [
+    "spotify:track:2takcwOaAZWiXQijPHIx7B"
+  ],
+  "created_at": "2025-02-20T15:04:05Z",
+  "updated": "2025-02-20T16:00:00Z"
 }

@@ -538,7 +538,6 @@ func NewUserProfile(ctx context.Context, token string) (*models.UserMongoDocumen
 	// Retrieve the user ID from context
 	userID, ok := ctx.Value(models.UsernameKey{}).(string)
 	if !ok {
-		fmt.Println("error in spot.go file")
 		return nil, fmt.Errorf("username was not properly set in the context")
 	}
 	fmt.Printf("Finished processing new user %s at %v\n", userID, currentTime)

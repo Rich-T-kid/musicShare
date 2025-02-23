@@ -104,17 +104,23 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 	var username = userProfileData.DisplayName
 	key := fmt.Sprintf("UserName:%s", username)
 	if !cache.Exist(ctx, key) {
-		cache.Set(ctx, key, "exist", Month)
+		cache.Set(ctx, key, "exist", Month * 12)
 	}
 	// TODO: Fix this later. right now reddis/mongoDB is acting dumb
-	//ctx = context.WithValue(ctx, models.UsernameKey{}, username) // Username is passed along to all request made here
 	cache.StoreTokens(username, tokens.AccessToken, tokens.Refresh)
-	/*userDoc , err := sw.NewUserProfile(ctx, tokens.AccessToken)
-	if err != nil{
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("Inter Server error occured attempting to construct users mongoDB document, username : %s",username)))
+	// NOTE: you can uncomment this stuff below when mongoDB is working again
+	//ctx = context.WithValue(ctx, models.UsernameKey{}, username) // Username is passed along to all request made here
+
+	// check if the username already exist; if so dont generate a new user doc and just return the needed json, otherwise generate userdoc and store username and uuid pair in reddis
+	/* if cache.Exist(ctx,fmt.Sprintf("UserName:UUID%s",username)){
+		userDoc , err := sw.NewUserProfile(ctx, tokens.AccessToken)
+		if err != nil{
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(fmt.Sprintf("Inter Server error occured attempting to construct users mongoDB document, username : %s",username)))
+		}
+		key = fmt.Sprintf("UserName:UUID:%s",username)
+		cache.Set(ctx,key,uuid,month * 12)
 	}
-	//
 	fmt.Printf("user %s's MongoDB document was generated with a uuid of %s",userDoc.UserProfileResponse.DisplayName,userDoc.UUID)
 	*/
 	fmt.Println("generated new access and refresh tokens,store the in cache and generated full user profile")
