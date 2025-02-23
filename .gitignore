@@ -2,3 +2,5 @@ spotKey.pem
 *.log
 *.rbd
 /venv
+/.vscode
+/.qodo
