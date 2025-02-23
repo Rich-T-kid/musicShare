@@ -107,7 +107,7 @@ def final_test():
     Raises an error if status codes are not successful or if curl is missing.
     """
     print("Running final tests to ensure servers and internet connectivity are okay...")
-    server_port = 8080
+    server_port = 80
     test_urls = [
         f"http://localhost:{server_port}/test",  # Example endpoint for the Go server
         "http://www.google.com/"       # Ensures external connectivity
@@ -139,7 +139,7 @@ def start_application():
     """
     print("Starting application setup...")
     try:
-        #imports()
+        imports()
         start_instances()
         start_servers()
         # Give servers a few seconds to come up
