@@ -1,14 +1,16 @@
-import { Routes, Route } from "react-router"
-import Home from "./pages/Home"
-import Reccomendation from "./pages/Reccomendation"
+import { Routes, Route } from "react-router-dom"
+import Home from "./pages/Home/Home"
+import Recommendation from "./pages/Recommendation/Recommendation"
 
 const App = () => {
 
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/reccomendations" element={<Reccomendation />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/reccomendation" element={<Recommendation />} />
+      </Routes>
+    </>
   )
 }
 
