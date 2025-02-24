@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom"
 import Home from "./pages/Home/Home"
 import Recommendation from "./pages/Recommendation/Recommendation"
+import "./index.css"
 
 const App = () => {
 
