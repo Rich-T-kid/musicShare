@@ -45,4 +45,5 @@ volumes:
   mongo_data:
   redis_data:
 networks:
-  app_network: {}
+  app_network: 
+    driver: bridge
