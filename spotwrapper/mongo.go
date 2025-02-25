@@ -40,7 +40,7 @@ type spotish[T comparable, V any] struct {
 // TODO: Change this to the docker container later
 func newSpotCache[T comparable, V any]() *spotish[T, V] {
 	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     "redis:6379",
 		Password: "", // No password set
 		DB:       0,  // Use default DB
 	})
@@ -176,7 +176,7 @@ Mongo DB implementation below
 func newDocumentStore() DocumentStore {
 	// Define MongoDB connection URI (matches Docker container settings)
 	return nil
-	mongoURI := "mongodb://admin:secretpassword@localhost:27017/"
+	mongoURI := "mongodb://admin:secretpassword@mongodb:27017/"
 
 	// Set client options
 	clientOptions := options.Client().ApplyURI(mongoURI)

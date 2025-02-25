@@ -1,6 +1,16 @@
 version: '3.8'
 
 services:
+
+  web-server:
+    build:
+      context: .
+      dockerfile: dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - mongodb 
+      - redis
   mongodb:
     image: mongo:latest
     container_name: mongodb
