@@ -13,65 +13,94 @@ import (
 	sw "github.com/Rich-T-kid/musicShare/spotwrapper"
 )
 
-// TODO:Add more error handling for the mongodb wrapper that may return errors. try and have helpful response codes
-// placing the Crud of route request Now
-type SongRequest struct {
-	UserName string `json:"username"`
-}
-
-// placing the Crud of route request Now
-// Song of the Day
-// TODO: works but needs more input Validation
-func SongOfTheDay(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "POST":
-		bodyByte, err := io.ReadAll(r.Body)
-		if err != nil {
-			logger.Info(fmt.Sprintf("Songs endpoint: error reading request body: %v", err))
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Malformed JSON body"))
-			return // Early return
-		}
-
-		// 2) Parse JSON into SongRequest
-		var requestJson SongRequest
-		err = json.Unmarshal(bodyByte, &requestJson)
-		if err != nil {
-			logger.Info(fmt.Sprintf("Songs endpoint: error parsing JSON body: %v", err))
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Malformed JSON body"))
-			return // Early return
-		}
-		fmt.Printf("Recived Request body %+v", requestJson)
-		//cache := userNamecache
-		if requestJson.UserName == "" { //|| cache.Exist(r.Context(),fmt.Sprintf("UniqueUserName:%s",requestJson.UserName)){
-			logger.Info("Songs endpoint: empty or invalid UserName field")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Username cannot be empty or invalid"))
-			return // Early return
-		}
-
-		// 4) Business logic: generate a new song
-		ctx := r.Context()
-		songs, err := client.GetReccomendations(ctx, requestJson.UserName)
-		if err != nil {
-			logger.Warning(fmt.Sprintf("Error generating 'New Song of the day' for user %s: %v", requestJson.UserName, err))
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Internal server error while generating a new song"))
-			return // Early return
-		}
-
-		// 5) Return success
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(songs)
-		return
-
-	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte(fmt.Sprintf("%s is not a valid method for this route", r.Method)))
+func GetSongRecommendation(w http.ResponseWriter, r *http.Request) {
+	// Extract userID from the path parameters
+	vars := mux.Vars(r)
+	userID, exists := vars["userID"]
+	if !exists || userID == "" {
+		logger.Info("Songs endpoint: missing userID in path parameters")
+		http.Error(w, "UserID parameter is required", http.StatusBadRequest)
 		return
 	}
+
+	// Fetch recommendations
+	ctx := r.Context()
+	songs, err := client.GetReccomendations(ctx, userID)
+	if err != nil {
+		logger.Warning(fmt.Sprintf("Error generating 'New Song of the day' for user %s: %v", userID, err))
+		http.Error(w, "Internal server error while generating a new song", http.StatusInternalServerError)
+		return
+	}
+
+	// Ensure songs exist in the database
+	for _, song := range songs {
+		if err := sw.AddSongtoDB(song.SongUri); err != nil {
+			logger.Warning(fmt.Sprintf("Failed to ensure song exists: %s - %v", song.SongUri, err))
+		}
+	}
+
+	// Return songs
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(songs)
+}
+func AddSongToDatabase(w http.ResponseWriter, r *http.Request) {
+	// Read request body
+	bodyByte, err := io.ReadAll(r.Body)
+	if err != nil {
+		logger.Info(fmt.Sprintf("AddSongToDatabase: error reading request body: %v", err))
+		http.Error(w, "Malformed JSON body", http.StatusBadRequest)
+		return
+	}
+
+	// Parse JSON into SongTypes struct
+	var song models.SongTypes
+	err = json.Unmarshal(bodyByte, &song)
+	if err != nil {
+		logger.Info(fmt.Sprintf("AddSongToDatabase: error parsing JSON body: %v", err))
+		http.Error(w, "Malformed JSON body", http.StatusBadRequest)
+		return
+	}
+
+	if song.SongURI == "" {
+		logger.Info("AddSongToDatabase: missing SongURI field")
+		http.Error(w, "SongURI is required", http.StatusBadRequest)
+		return
+	}
+
+	// Add song to the database
+	if err := sw.AddSongtoDB(song.SongURI); err != nil {
+		logger.Warning(fmt.Sprintf("Failed to insert song: %s - %v", song.SongURI, err))
+		http.Error(w, "Failed to insert song into database", http.StatusInternalServerError)
+		return
+	}
+
+	// Success response
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(fmt.Sprintf("Successfully added song: %s", song.SongURI)))
+}
+func GetSongByID(w http.ResponseWriter, r *http.Request) {
+	// Extract songID from path parameters
+	vars := mux.Vars(r)
+	SongUri, exists := vars["songID"]
+	if !exists || SongUri == "" {
+		logger.Info("GetSongByID: missing songID in path parameters")
+		http.Error(w, "SongID parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	// Query the database for the song
+	song, err := sw.ReturnSongbyID(SongUri)
+	if err != nil {
+		logger.Warning(fmt.Sprintf("GetSongByID: Failed to find song %s - %v", SongUri, err))
+		http.Error(w, "Song not found", http.StatusNotFound)
+		return
+	}
+
+	// Return the song data
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(song)
 }
 
 // tested and works

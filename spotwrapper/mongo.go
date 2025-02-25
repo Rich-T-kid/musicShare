@@ -158,6 +158,7 @@ type UserStore interface {
 type SongStore interface {
 	GetSongByID(songID string) (*models.SongTypes, error)
 	InsertSong(song *models.SongTypes) error
+	AddSongtoDB(songURI string) error
 	UpdateSong(song *models.SongTypes) error
 	DeleteSong(songID string) error
 }
@@ -302,7 +303,6 @@ func (m *MongoDBStore) GetUserComments(userID string) ([]models.UserComments, er
 func (m *MongoDBStore) GetSongByID(songID string) (*models.SongTypes, error) {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("songs")
-	fmt.Println("Looking for song with ID ", songID)
 	filter := bson.M{"songURI": songID}
 	var song models.SongTypes
 	if err := collection.FindOne(context.TODO(), filter).Decode(&song); err != nil {
@@ -425,6 +425,35 @@ func (m *MongoDBStore) InsertSong(song *models.SongTypes) error {
 		fmt.Println("No changes made to the document.")
 	}
 
+	return nil
+}
+
+func (m *MongoDBStore) AddSongtoDB(songURI string) error {
+	db := m.client.Database(DatabaseName)
+	collection := db.Collection("songs")
+
+	filter := bson.M{"songURI": songURI}
+
+	update := bson.M{
+		"$setOnInsert": bson.M{
+			"songURI":  songURI,
+			"uuid":     newID(), // Generate only if new
+			"comments": []models.UserComments{},
+		},
+	}
+
+	updateOptions := options.Update().SetUpsert(true)
+
+	result, err := collection.UpdateOne(context.TODO(), filter, update, updateOptions)
+	if err != nil {
+		return fmt.Errorf("failed to upsert song: %v", err)
+	}
+
+	if result.MatchedCount > 0 {
+		fmt.Printf("Song already exists in DB: %s\n", songURI)
+	} else if result.UpsertedCount > 0 {
+		fmt.Printf("Inserted new song: %s\n", songURI)
+	}
 	return nil
 }
 
@@ -639,4 +668,12 @@ func GetUserSongs(userid string) ([]models.SongTypes, error) {
 }
 func GetUserComments(userid string) ([]models.UserComments, error) {
 	return database.GetUserComments(userid)
+}
+
+func AddSongtoDB(songURI string) error {
+	return database.AddSongtoDB(songURI)
+
+}
+func ReturnSongbyID(songURI string) (*models.SongTypes, error) {
+	return database.GetSongByID(songURI)
 }

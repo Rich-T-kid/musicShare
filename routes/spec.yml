@@ -13,20 +13,21 @@ servers:
   - url: http://localhost:8080
 
 paths:
-  /songs:
-    post:
-      summary: Generate "Song of the Day"
+  /songs/{userID}:
+    get:
+      summary: Get "Song of the Day" for a user
       description: |
-        Creates a new "Song of the Day" for a given username. 
-        Expects a JSON body with "username".
+        Retrieves a new song recommendation for a specific user.
+        Ensures the recommended song exists in the database before returning.
       tags:
         - Songs
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SongRequest"
+      parameters:
+        - in: path
+          name: userID
+          required: true
+          schema:
+            type: string
+          description: The unique user ID for retrieving recommendations.
       responses:
         "200":
           description: OK - Returns an array of recommended songs.
@@ -35,14 +36,37 @@ paths:
               schema:
                 type: array
                 items:
-                  description: A recommended song object (implementation-specific).
-                  type: object
+                  $ref: "#/components/schemas/SongBody"
         "400":
-          description: Bad Request - Malformed JSON or invalid username.
-        "405":
-          description: Method Not Allowed
+          description: Bad Request - Missing or invalid userID.
         "500":
           description: Internal Server Error
+        "405":
+          description: Method Not Allowed
+
+  /songs/add:
+    post:
+      summary: Add a song manually to the database
+      description: |
+        Allows manual insertion of a song into the database.
+        Ensures no duplicate entries.
+      tags:
+        - Songs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestAddSong"
+      responses:
+        "201":
+          description: Created - Successfully added the song.
+        "400":
+          description: Bad Request - Malformed JSON or missing required fields.
+        "500":
+          description: Internal Server Error
+        "405":
+          description: Method Not Allowed
 
   /comments:
     get:
@@ -358,18 +382,67 @@ paths:
           description: Redirect to `/auth`
         "405":
           description: Method Not Allowed
+  /song/{songID}:
+    get:
+      summary: Retrieve song details by song URI
+      description: |
+        Fetches the complete song metadata from MongoDB using the song's URI.
+      tags:
+        - Songs
+      parameters:
+        - in: path
+          name: songID
+          required: true
+          schema:
+            type: string
+          description: The unique song URI.
+      responses:
+        "200":
+          description: OK - Returns the full song document from MongoDB.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SongTypes"
+        "400":
+          description: Bad Request - Missing or invalid songID.
+        "404":
+          description: Not Found - No song found for the given URI.
+        "500":
+          description: Internal Server Error
+        "405":
+          description: Method Not Allowed
 
 components:
   schemas:
-    # Body used by POST /songs
-    SongRequest:
+    SongBody:
       type: object
       properties:
-        username:
+        name:
           type: string
-          description: "Spotify username or some unique user identifier"
+          description: The name of the song.
+        artist:
+          type: string
+          description: The artist of the song.
+        song_uri:
+          type: string
+          description: The unique song URI (Spotify or other platforms in the future).
+        rank:
+          type: integer
+          format: int32
+          description: The rank of the song in the recommendation list.
       required:
-        - username
+        - name
+        - artist
+        - song_uri
+
+    AddSongRequest:
+      type: object
+      properties:
+        songURI:
+          type: string
+          description: The unique Spotify URI or identifier of the song.
+      required:
+        - songURI
 
     # Body used by GET/POST /comments
     CommentsRequest:
@@ -576,4 +649,18 @@ components:
             type: string
         uuid:
           type: string
+
+    RequestAddSong:
+      type: object
+      properties:
+        songURI:
+          type: string
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserComments"
+        alternateName:
+          type: array
+          items:
+            type: string
 

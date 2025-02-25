@@ -10,7 +10,7 @@ import (
 func InitRoutes() *mux.Router {
 
 	r := mux.NewRouter().StrictSlash(true) // /exist/r/ == /exist/r
-	r.Use(temp)
+	r.Use(enableCors)
 	// Fine
 	// Define routes
 	r.HandleFunc("/test", Test).Methods("GET")         // API
@@ -24,7 +24,11 @@ func InitRoutes() *mux.Router {
 	r.HandleFunc("/loveShare", LoveShare).Methods("GET") // HTML
 
 	// Basic Crud
-	r.HandleFunc("/songs", SongOfTheDay).Methods("POST")                               // API
+	r.HandleFunc("/song/{songID}", GetSongByID).Methods("GET")
+
+	r.HandleFunc("/songs/{userID}", GetSongRecommendation).Methods("GET") // Fetch song recommendation
+	r.HandleFunc("/songs/add", AddSongToDatabase).Methods("POST")         // Manually add a song
+
 	r.HandleFunc("/comments", Comments).Methods("GET", "POST", "PUT", "DELETE")        // API
 	r.HandleFunc("/comments/{comment_id}", CommentsID).Methods("GET", "PUT", "DELETE") // API
 	r.HandleFunc("/users/{user_id}", UserID).Methods("GET")                            // return user json document                            // API
@@ -34,10 +38,23 @@ func InitRoutes() *mux.Router {
 	return r
 }
 
+// TODO: this isnt done finish
 // middleware Mabey will be used in auth later
-func temp(next http.Handler) http.Handler {
+func enableCors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("url: %s Method: %s ", r.URL.Path, r.Method)
+		fmt.Printf("url: %s Method: %s Origin: %s\n", r.URL.Path, r.Method, r.Header.Get("Origin"))
+
+		// Set CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "*") // Or your specific origin
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type,access-control-allow-origin, access-control-allow-headers")
+
+		// Handle preflight requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
 		next.ServeHTTP(w, r)
 	})
 }
