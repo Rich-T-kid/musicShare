@@ -16,6 +16,21 @@ COPY . .
 
 # Build the application using the vendor folder
 RUN go build -mod=vendor -o server
+# python env
+FROM python:3.10.12
+
+WORKDIR /app
+
+COPY --from=builder /app/server /app/server
+
+# Copy Python gRPC files
+COPY grpc /app/grpc
+
+# Copy the specific requirements file
+COPY grpc/requirements.txt /app/grpc/requirements.txt
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r /app/grpc/requirements.txt
 
 EXPOSE 80
 CMD ["./server"]

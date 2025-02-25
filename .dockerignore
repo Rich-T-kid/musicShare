@@ -4,3 +4,6 @@
 /.qodo
 *.pem
 *.MD
+.git
+*.log
+/venv
