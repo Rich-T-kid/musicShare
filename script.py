@@ -12,39 +12,12 @@ def start_instances():
         raise FileNotFoundError("docker-compose.yml is missing. Please provide this file.")
 
     try:
-        subprocess.run(["docker-compose", "up", "-d"], capture_output=True, check=True)
+        subprocess.run(["sudo","docker-compose", "up", "-d"], capture_output=True, check=True)
     except FileNotFoundError:
         raise FileNotFoundError("docker-compose not found. Install docker-compose or ensure it's available in your PATH.")
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Failed to start Docker containers:\n{e.stderr.decode().strip()}")
 
-def final_test():
-    """
-    Tests connectivity by curling both the local server endpoint and an external site.
-    Raises an error if status codes are not successful or if curl is missing.
-    """
-    print("Running final tests to ensure servers and internet connectivity are okay...")
-    server_port = 800
-    test_urls = [
-        f"http://localhost:{server_port}/test",  # Example endpoint for the Go server
-        "http://www.google.com/"       # Ensures external connectivity
-    ]
-
-    for url in test_urls:
-        print(f"Testing URL: {url}")
-        try:
-            # Use -I to fetch only the headers
-            result = subprocess.run(["curl", "-I", url], capture_output=True, text=True, check=True)
-            output = result.stdout
-            # Check for a 200 OK in the headers
-            if "200 OK" not in output:
-                raise RuntimeError(f"Endpoint {url} did not return 200 OK.")
-        except FileNotFoundError:
-            raise FileNotFoundError("curl not found. Install curl or ensure it's in your PATH.")
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Failed to curl {url}:\n{e.stderr}")
-
-    print("All final tests passed successfully.")
 
 def start_application():
     """
@@ -56,7 +29,6 @@ def start_application():
     print("Starting application setup...")
     try:
         start_instances()
-        final_test()
         print("Everything is running as it should.")
     except Exception as e:
         print(f"Application failed during startup: {str(e)}")

@@ -17,5 +17,5 @@ COPY . .
 # Build the application using the vendor folder
 RUN go build -mod=vendor -o server
 
-EXPOSE 800
+EXPOSE 80
 CMD ["./server"]
