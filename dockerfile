@@ -24,10 +24,10 @@ WORKDIR /app
 COPY --from=builder /app/server /app/server
 
 # Copy Python gRPC files
-COPY grpc /app/grpc
+COPY reccommendations/grpc /app/grpc
 
 # Copy the specific requirements file
-COPY grpc/requirements.txt /app/grpc/requirements.txt
+COPY reccommendations/grpc/requirements.txt /app/reccommendations/grpc/requirements.txt
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r /app/grpc/requirements.txt
