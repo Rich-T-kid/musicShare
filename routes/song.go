@@ -9,7 +9,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/Rich-T-kid/musicShare/pkg/models"
-	client "github.com/Rich-T-kid/musicShare/reccomendations/grpc"
+	client "github.com/Rich-T-kid/musicShare/reccommendations/grpc"
 	sw "github.com/Rich-T-kid/musicShare/spotwrapper"
 )
 

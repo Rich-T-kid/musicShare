@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -37,10 +38,10 @@ type spotish[T comparable, V any] struct {
 }
 
 // Function to initialize a new Redis client
-// TODO: Change this to the docker container later
 func newSpotCache[T comparable, V any]() *spotish[T, V] {
+	redisClientURI := os.Getenv("REDIS_ADDR")
 	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     redisClientURI,
 		Password: "", // No password set
 		DB:       0,  // Use default DB
 	})
@@ -126,8 +127,6 @@ func (s *spotish[T, V]) GetTokens(userID string) (string, string, error) {
 	return accessToken, refreshToken, nil
 }
 
-// TODO: Implement all of this. In mongo DB fr this time
-// MongoDb  Implementation
 // functions below should rely on this interface for now
 // seperate ticket to imlement all of this
 
@@ -175,8 +174,7 @@ Mongo DB implementation below
 */
 func newDocumentStore() DocumentStore {
 	// Define MongoDB connection URI (matches Docker container settings)
-	return nil
-	mongoURI := "mongodb://admin:secretpassword@localhost:27017/"
+	mongoURI := os.Getenv("MONGO_URI")
 
 	// Set client options
 	clientOptions := options.Client().ApplyURI(mongoURI)
