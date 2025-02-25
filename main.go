@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/Rich-T-kid/musicShare/routes"
 )
@@ -25,6 +26,7 @@ Handle duplicate usernames and define security best practices.
 */
 
 func main() {
+	fmt.Printf("mongoDB connection uri %s\n redis connection string %s\n ", os.Getenv("MONGO_URI"), os.Getenv("REDIS_ADDR"))
 	r := routes.InitRoutes() // /exist/r/ == /exist/r
 
 	addr := fmt.Sprintf(":%s", port)

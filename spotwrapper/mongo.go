@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -38,8 +39,9 @@ type spotish[T comparable, V any] struct {
 
 // Function to initialize a new Redis client
 func newSpotCache[T comparable, V any]() *spotish[T, V] {
+	redisClientURI := os.Getenv("REDIS_ADDR")
 	client := redis.NewClient(&redis.Options{
-		Addr:     "redis:6379",
+		Addr:     redisClientURI,
 		Password: "", // No password set
 		DB:       0,  // Use default DB
 	})
@@ -172,7 +174,7 @@ Mongo DB implementation below
 */
 func newDocumentStore() DocumentStore {
 	// Define MongoDB connection URI (matches Docker container settings)
-	mongoURI := "mongodb://admin:secretpassword@mongodb:27017/"
+	mongoURI := os.Getenv("MONGO_URI")
 
 	// Set client options
 	clientOptions := options.Client().ApplyURI(mongoURI)
