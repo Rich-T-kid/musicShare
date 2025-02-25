@@ -44,11 +44,11 @@ const MusicCard = () => {
                     </button>
                 </div>
                 {/* Progress Bar */}
-                <div class="mt-6 bg-gray-200 h-2 rounded-full">
-                    <div class="bg-teal-500 h-2 rounded-full w-1/2"></div>
+                <div className="mt-6 bg-gray-200 h-2 rounded-full">
+                    <div className="bg-teal-500 h-2 rounded-full w-1/2"></div>
                 </div>
                 {/* Time Information */}
-                <div class="flex justify-between mt-2 text-sm text-gray-600">
+                <div className="flex justify-between mt-2 text-sm text-gray-600">
                     <span>1:57</span>
                     <span>3:53</span>
                 </div>
