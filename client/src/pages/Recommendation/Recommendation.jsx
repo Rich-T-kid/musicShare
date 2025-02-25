@@ -1,11 +1,13 @@
 import Navigation from "../../components/shared/Navigation"
+import MusicCard from "../../components/reccomendation/MusicCard"
+import Footer from "../../components/shared/Footer"
 
 const Recomendation = () => {
     return(
         <div>
-            <h1>Reccomendation Page</h1>
             <Navigation />
-            {/* Will have to add music player components here */}
+            <MusicCard />
+            <Footer />
         </div>
     )
 }

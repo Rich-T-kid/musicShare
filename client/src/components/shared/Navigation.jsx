@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import MobileMenuButton from "./MobileMenuButton"
 import NavButtons from "./NavButtons"
 import ProfileButton  from "./ProfileButton"
+
 const Navigation = () => {
   return (
     <nav className="bg-gray-800">
