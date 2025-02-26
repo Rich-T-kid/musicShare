@@ -119,6 +119,12 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(fmt.Sprintf("Inter Server error occured attempting to construct users mongoDB document, username : %s", username)))
 		}
+
+		err = sw.SaveUser(userDoc)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(fmt.Sprintf("Inter Server error occured attempting to save users mongoDB document, username : %s", username)))
+		}
 		cache.Set(ctx, userUUIDKey, userDoc.UUID, Month*12)
 		fmt.Printf("user %s's MongoDB document was generated with a uuid of %s", userDoc.UserProfileResponse.DisplayName, userDoc.UUID)
 	}
