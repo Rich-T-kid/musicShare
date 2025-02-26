@@ -107,7 +107,6 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 	if !cache.Exist(ctx, key) {
 		cache.Set(ctx, key, "exist", Month*12)
 	}
-	// TODO: Fix this later. right now reddis/mongoDB is acting dumb
 	cache.StoreTokens(username, tokens.AccessToken, tokens.Refresh)
 	// NOTE: you can uncomment this stuff below when mongoDB is working again
 	ctx = context.WithValue(ctx, models.UsernameKey{}, username) // Username is passed along to all request made here
@@ -118,13 +117,15 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 		userDoc, err := sw.NewUserProfile(ctx, tokens.AccessToken)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("Inter Server error occured attempting to construct users mongoDB document, username : %s", username)))
+			w.Write([]byte(fmt.Sprintf("Internal Server error occured attempting to construct users mongoDB document, username : %s", username)))
+			return
 		}
 
 		err = sw.SaveUser(userDoc)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("Inter Server error occured attempting to save users mongoDB document, username : %s", username)))
+			w.Write([]byte(fmt.Sprintf("Internal Server error occured attempting to save users mongoDB document, username : %s", username)))
+			return
 		}
 		cache.Set(ctx, userUUIDKey, userDoc.UUID, Month*12)
 		fmt.Printf("user %s's MongoDB document was generated with a uuid of %s", userDoc.UserProfileResponse.DisplayName, userDoc.UUID)
@@ -137,6 +138,7 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("when attempting to grab user %s with userUUID of %s from document store this error occured %v\n", username, presentUserUUID, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("error has occured internally"))
+		return
 	}
 	userinfo := struct {
 		UUID             string
