@@ -173,7 +173,7 @@ type CommentStore interface {
 /*
 Mongo DB implementation below
 */
-func newDocumentStore() DocumentStore {
+func NewDocumentStore() DocumentStore {
 	// Define MongoDB connection URI (matches Docker container settings)
 	mongoURI := os.Getenv("MONGO_URI")
 
@@ -187,7 +187,7 @@ func newDocumentStore() DocumentStore {
 	}
 
 	// Ping the database to check if it's reachable
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	err = client.Ping(ctx, nil)
 	if err != nil {
@@ -625,7 +625,7 @@ func newID() string {
 End of mongoDB implementation
 */
 var (
-	database = newDocumentStore()
+	database = NewDocumentStore()
 )
 
 // TODO: Beofore testing on other code base. just implement the below methods using the interfaces
