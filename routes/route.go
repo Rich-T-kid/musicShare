@@ -22,7 +22,7 @@ var (
 	clientID      = "8b277fb167214401bb9486e53d183963"
 	clientSecrete = "db97671791ec461f922c52359d89cddf"
 	authURL       = "https://accounts.spotify.com/authorize"
-	redirect      = "http://localhost:80/callback"
+	redirect      = "http://18.222.251.123:80/callback"
 	token_url     = "https://accounts.spotify.com/api/token"
 	scopes        = "user-library-read user-modify-playback-state playlist-modify-public playlist-modify-private playlist-read-private user-top-read user-follow-read"
 	randomString  = "ChangeLater"
