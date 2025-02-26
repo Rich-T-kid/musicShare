@@ -114,6 +114,7 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 	userUUIDKey := fmt.Sprintf("UserName:UUID%s", username)
 	// check if the username already exist; if so dont generate a new user doc and just return the needed json, otherwise generate userdoc and store username and uuid pair in reddis
 	if !cache.Exist(ctx, userUUIDKey) {
+		fmt.Println("user doesnt exist geneerating new profile")
 		userDoc, err := sw.NewUserProfile(ctx, tokens.AccessToken)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
