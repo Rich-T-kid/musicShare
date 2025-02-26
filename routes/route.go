@@ -135,11 +135,18 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("UserID is present in cache -> %s\n", presentUserUUID)
 	userDoc, err := sw.GetUserByID(presentUserUUID)
 	if err != nil {
-		fmt.Printf("when attempting to grab user %s with userUUID of %s from document store this error occured %v\n", username, presentUserUUID, err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("error has occured internally"))
+		fmt.Printf("when attempting to grab user %s with userUUID of %s from document store this error occurred: %v\n", username, presentUserUUID, err)
+		w.WriteHeader(http.StatusNotFound) // Use 404 instead of 500 if user is missing
+		w.Write([]byte(fmt.Sprintf("User %s not found in MongoDB", username)))
 		return
 	}
+	if userDoc == nil {
+		fmt.Printf("userDoc is nil for userUUID: %s\n", presentUserUUID)
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("User document not found"))
+		return
+	}
+
 	userinfo := struct {
 		UUID             string
 		Name             string
