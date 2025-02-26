@@ -122,13 +122,14 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 		cache.Set(ctx, userUUIDKey, userDoc.UUID, Month*12)
 		fmt.Printf("user %s's MongoDB document was generated with a uuid of %s", userDoc.UserProfileResponse.DisplayName, userDoc.UUID)
 	}
+	fmt.Println("Now going to attempt to grab user from redis cache")
 	presentUserUUID := cache.Get(ctx, userUUIDKey)
-	fmt.Sprintf("UserID is present in cache -> %s" ,presentUserUUID)
+	fmt.Printf("UserID is present in cache -> %s\n", presentUserUUID)
 	userDoc, err := sw.GetUserByID(presentUserUUID)
-	if err != nil{
-		fmt.Printf("when attempting to grab user %s with userUUID of %s from document store this error occured %v\n",username,presentUserUUID,err
-	w.WriteHeader(http.StatusInternalServerError)
-	w.Write([]byte("error has occured internally"))
+	if err != nil {
+		fmt.Printf("when attempting to grab user %s with userUUID of %s from document store this error occured %v\n", username, presentUserUUID, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("error has occured internally"))
 	}
 	userinfo := struct {
 		UUID             string
@@ -243,7 +244,7 @@ func getToken(code string) (models.TokenResponse, error) {
 
 	// Read response body
 	body, _ := io.ReadAll(resp.Body)
-	fmt.Printf("Token Response Status: %d\n,  Token Response Body %s", resp.StatusCode,string(body))
+	fmt.Printf("Token Response Status: %d\n,  Token Response Body %s", resp.StatusCode, string(body))
 
 	if resp.StatusCode != http.StatusOK {
 		return invalidResponse, fmt.Errorf("error: response status code %d", resp.StatusCode)
