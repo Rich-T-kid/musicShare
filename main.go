@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -28,6 +29,9 @@ func main() {
 	r := routes.InitRoutes() // /exist/r/ == /exist/r
 	db := sw.CreateNewMongoInstance()
 	fmt.Println("Response of mongoDB connection function -> ", db.Connected(context.TODO()))
+	if db.Connected(context.TODO()) != nil {
+		log.Fatal("MongoDB is not connected")
+	}
 	addr := fmt.Sprintf(":%s", port)
 	fmt.Println("Server is running on port", addr)
 	http.ListenAndServe(addr, r)
