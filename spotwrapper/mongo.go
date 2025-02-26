@@ -195,12 +195,11 @@ func NewDocumentStore() DocumentStore {
 	}
 
 	fmt.Println("✅ Successfully connected to MongoDB")
-	db := []string{"test_db", "prod_db"}
-	collection := []string{"users", "comments", "songs"}
-	return &MongoDBStore{client: client,
-		databases:   db,
-		collections: collection,
-	}
+	//db := []string{"test_db", "prod_db"}
+	//collection := []string{"users", "comments", "songs"}
+	return &MongoDBStore{client: client} //databases:   db,
+	//collections: collection,
+
 }
 
 func (m *MongoDBStore) Connected(ctx context.Context) error {
@@ -223,6 +222,7 @@ func (m *MongoDBStore) Connected(ctx context.Context) error {
 	// Verify each expected database and its collections.
 	for _, expectedDB := range m.databases {
 		if !contains(availableDBs, expectedDB) {
+
 			return fmt.Errorf("expected database %q not found", expectedDB)
 		}
 
