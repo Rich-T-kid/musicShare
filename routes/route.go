@@ -69,11 +69,13 @@ func RedirectPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func Callback(w http.ResponseWriter, r *http.Request) {
+	log.Println("[Callback] Received callback request")
+
 	// Parse the incoming request URL
 	u, err := url.Parse(r.URL.String())
 	if err != nil {
 		http.Error(w, "Failed to parse request URL", http.StatusInternalServerError)
-		log.Printf("Error parsing request URL: %v", err)
+		log.Printf("[Callback] Error parsing request URL: %v", err)
 		return
 	}
 
@@ -83,32 +85,35 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 	state := QV.Get("state")
 	spotifyError := QV.Get("error")
 
+	log.Printf("[Callback] Extracted query params - code: %s, state: %s, error: %s", code, state, spotifyError)
+
 	// Validate state to prevent CSRF attacks
 	if state != randomString {
 		http.Error(w, "Invalid state code returned by Spotify", http.StatusUnauthorized)
-		log.Printf("State mismatch: expected %s, got %s", randomString, state)
+		log.Printf("[Callback] State mismatch: expected %s, got %s", randomString, state)
 		return
 	}
 
 	// Handle Spotify errors
 	if spotifyError != "" {
 		http.Error(w, "Spotify login error: "+spotifyError, http.StatusBadRequest)
-		log.Printf("Spotify login error: %s", spotifyError)
+		log.Printf("[Callback] Spotify login error: %s", spotifyError)
 		return
 	}
 
 	// Ensure authorization code is present
 	if code == "" {
 		http.Error(w, "Authorization code missing", http.StatusBadRequest)
-		log.Println("Authorization code missing in callback")
+		log.Println("[Callback] Authorization code missing in callback")
 		return
 	}
 
 	// Retrieve access tokens from Spotify
+	log.Println("[Callback] Requesting access token from Spotify")
 	tokens, err := getToken(code)
 	if err != nil {
 		http.Error(w, "Failed to get access token", http.StatusInternalServerError)
-		log.Printf("Error getting access token: %v", err)
+		log.Printf("[Callback] Error getting access token: %v", err)
 		return
 	}
 
@@ -116,77 +121,88 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 	cache := userNamecache
 
 	// Fetch user profile from Spotify
+	log.Println("[Callback] Fetching user profile data from Spotify")
 	userProfileData := sw.GetUserData(ctx, tokens.AccessToken)
 	if userProfileData == nil {
 		http.Error(w, "Failed to fetch user profile data", http.StatusInternalServerError)
-		log.Println("Error: user profile data is nil")
+		log.Println("[Callback] Error: user profile data is nil")
 		return
 	}
 
 	username := userProfileData.DisplayName
+	log.Printf("[Callback] Retrieved user profile - Username: %s", username)
+
 	key := fmt.Sprintf("UserName:%s", username)
 
 	// Cache the username if not already present
 	if !cache.Exist(ctx, key) {
 		cache.Set(ctx, key, "exist", Month*12)
+		log.Printf("[Callback] Cached new username: %s", username)
 	}
 	cache.StoreTokens(username, tokens.AccessToken, tokens.Refresh)
 
 	// Prepare context with username
 	ctx = context.WithValue(ctx, models.UsernameKey{}, username)
 	userUUIDKey := fmt.Sprintf("UserName:UUID%s", username)
+
+	// Ensure database connection is available
+	log.Println("[Callback] Checking database connection")
 	db := sw.NewDocumentStore()
-	fmt.Println("Response to database being connected -> ", db.Connected(ctx))
+	dbStatus := db.Connected(ctx)
+	log.Printf("[Callback] Database connection status: %v", dbStatus)
+
 	// Check if the user exists in cache, otherwise create a new profile
 	if !cache.Exist(ctx, userUUIDKey) {
-		log.Printf("User %s does not exist, generating new profile", username)
+		log.Printf("[Callback] User %s does not exist in cache, generating new profile", username)
 
 		userDoc, err := sw.NewUserProfile(ctx, tokens.AccessToken)
 		if err != nil {
 			http.Error(w, "Internal server error while creating user profile", http.StatusInternalServerError)
-			log.Printf("Error constructing user MongoDB document for %s: %v", username, err)
+			log.Printf("[Callback] Error constructing user MongoDB document for %s: %v", username, err)
 			return
 		}
+
+		log.Printf("[Callback] Successfully created user profile for %s", username)
 
 		err = sw.SaveUser(userDoc)
 		if err != nil {
 			http.Error(w, "Internal server error while saving user profile", http.StatusInternalServerError)
-			log.Printf("Error saving user MongoDB document for %s: %v", username, err)
+			log.Printf("[Callback] Error saving user MongoDB document for %s: %v", username, err)
 			return
 		}
 
 		cache.Set(ctx, userUUIDKey, userDoc.UUID, Month*12)
-		log.Printf("User %s's MongoDB document was generated with UUID: %s", userDoc.UserProfileResponse.DisplayName, userDoc.UUID)
+		log.Printf("[Callback] User %s's MongoDB document was generated with UUID: %s", userDoc.UserProfileResponse.DisplayName, userDoc.UUID)
 	}
-	fmt.Println("Done testing returing now")
-	return
 
 	// Retrieve the user's UUID from the cache
-	log.Println("Attempting to retrieve user from Redis cache")
+	log.Println("[Callback] Attempting to retrieve user UUID from Redis cache")
 	presentUserUUID := cache.Get(ctx, userUUIDKey)
 
 	if presentUserUUID == "" {
 		http.Error(w, "User UUID not found in cache", http.StatusInternalServerError)
-		log.Printf("Error: User UUID missing from cache for %s", username)
+		log.Printf("[Callback] Error: User UUID missing from cache for %s", username)
 		return
 	}
 
-	log.Printf("User UUID retrieved from cache: %s", presentUserUUID)
+	log.Printf("[Callback] User UUID retrieved from cache: %s", presentUserUUID)
 
 	// Fetch user document from MongoDB
+	log.Printf("[Callback] Fetching user document from MongoDB for UUID: %s", presentUserUUID)
 	userDoc, err := sw.GetUserByID(presentUserUUID)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("User %s not found in MongoDB", username), http.StatusNotFound)
-		log.Printf("Error retrieving user %s with UUID %s: %v", username, presentUserUUID, err)
+		log.Printf("[Callback] Error retrieving user %s with UUID %s: %v", username, presentUserUUID, err)
 		return
 	}
 	if userDoc == nil {
 		http.Error(w, "User document not found", http.StatusNotFound)
-		log.Printf("Error: Retrieved user document is nil for UUID: %s", presentUserUUID)
+		log.Printf("[Callback] Error: Retrieved user document is nil for UUID: %s", presentUserUUID)
 		return
 	}
 
 	// Prepare and send response
+	log.Printf("[Callback] Successfully retrieved user document for %s", username)
 	userinfo := struct {
 		UUID             string
 		Name             string
@@ -203,7 +219,7 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(userinfo); err != nil {
 		http.Error(w, "Failed to encode JSON response", http.StatusInternalServerError)
-		log.Printf("Error encoding JSON response: %v", err)
+		log.Printf("[Callback] Error encoding JSON response: %v", err)
 	}
 }
 
