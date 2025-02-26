@@ -21,7 +21,7 @@ var (
 	clientID      = "8b277fb167214401bb9486e53d183963"
 	clientSecrete = "db97671791ec461f922c52359d89cddf"
 	authURL       = "https://accounts.spotify.com/authorize"
-	redirect      = "http://localhost:8080/callback"
+	redirect      = "http://3.145.7.29:80/callback"
 	token_url     = "https://accounts.spotify.com/api/token"
 	scopes        = "user-library-read user-modify-playback-state playlist-modify-public playlist-modify-private playlist-read-private user-top-read user-follow-read"
 	randomString  = "ChangeLater"
@@ -228,6 +228,7 @@ func getToken(code string) (models.TokenResponse, error) {
 	// Make request
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	fmt.Printf("Exact request sent to spotify %+v", resp.Request)
 	if err != nil {
 		fmt.Println("Error making request:", err)
 		return invalidResponse, err
@@ -236,7 +237,7 @@ func getToken(code string) (models.TokenResponse, error) {
 
 	// Read response body
 	body, _ := io.ReadAll(resp.Body)
-	fmt.Printf("Token Response Status: %d\n", resp.StatusCode)
+	fmt.Printf("Token Response Status: %d\n,  Token Response Body %s", resp.StatusCode,string(body))
 
 	if resp.StatusCode != http.StatusOK {
 		return invalidResponse, fmt.Errorf("error: response status code %d", resp.StatusCode)
