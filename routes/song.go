@@ -107,44 +107,48 @@ func GetSongByID(w http.ResponseWriter, r *http.Request) {
 func Comments(w http.ResponseWriter, r *http.Request) {
 	// request Body contains the song id
 	w.Header().Set("Content-Type", "application/json")
-	bodyBytes, err := io.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf("Could not read request body. Ensure input body matches api spec")))
-		logger.Warning(fmt.Sprintf("Error decoding requst body %e", err))
-		return
-	}
-	var request models.CommentsRequest
-	err = json.Unmarshal(bodyBytes, &request)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf("Could not read request body error : %e. Ensure input body matches api spec", err)))
-		logger.Warning(fmt.Sprintf("Error decoding requst body %e", err))
-		return
-	}
 	switch r.Method {
 	case "POST":
+		bodyBytes, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(fmt.Sprintf("Could not read request body. Ensure input body matches api spec")))
+			logger.Warning(fmt.Sprintf("Error decoding requst body %e", err))
+			return
+		}
+		var request models.CommentsRequest
+		err = json.Unmarshal(bodyBytes, &request)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(fmt.Sprintf("Could not read request body error : %e. Ensure input body matches api spec", err)))
+			logger.Warning(fmt.Sprintf("Error decoding requst body %e", err))
+			return
+		}
 		// submit Comment under a song
 		err = sw.SubmitComment(request.SongURI, request.UserResp)
 		if err != nil {
 			w.WriteHeader(500)
-			w.Write([]byte(fmt.Sprintf("")))
+			w.Write([]byte(fmt.Sprintf("Error has occured submiting comment")))
 			return
 		}
 		w.WriteHeader(http.StatusOK)
 	case "GET":
-		// returns all comments associated with a songURI that we have
-		// for now just return all but later add standard api practices like limiting and offsets, ect
-		comments, err := sw.GetComments(request.SongURI, 0, 0)
-		if err != nil {
-			w.WriteHeader(500)
-			w.Write([]byte(fmt.Sprintf("")))
+		songURI := r.URL.Query().Get("songURI")
+		if songURI == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Missing required query parameter: songURI"))
 			return
 		}
+
+		comments, err := sw.GetComments(songURI, 0, 0)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Error fetching comments"))
+			return
+		}
+
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(comments)
-		return
-
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte(fmt.Sprintf("Method %s is not allowed", r.Method)))

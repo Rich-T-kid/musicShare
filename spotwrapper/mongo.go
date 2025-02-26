@@ -264,6 +264,7 @@ func (m *MongoDBStore) GetUserByID(userID string) (*models.UserMongoDocument, er
 
 	return &userDoc, nil
 }
+
 func (m *MongoDBStore) SaveUser(user *models.UserMongoDocument) error {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("users")
@@ -271,12 +272,10 @@ func (m *MongoDBStore) SaveUser(user *models.UserMongoDocument) error {
 
 		user.UUID = newID()
 	}
-	insertResult, err := collection.InsertOne(context.TODO(), user)
+	_, err := collection.InsertOne(context.TODO(), user)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(user)
-	fmt.Println("Inserted document ID:", insertResult.InsertedID)
 
 	return nil /* implementation */
 }
@@ -676,4 +675,8 @@ func AddSongtoDB(songURI string) error {
 }
 func ReturnSongbyID(songURI string) (*models.SongTypes, error) {
 	return database.GetSongByID(songURI)
+}
+
+func GetUserByID(userUUID string) (*models.UserMongoDocument, error) {
+	return database.GetUserByID(userUUID)
 }
