@@ -136,7 +136,6 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 	ctx = context.WithValue(ctx, models.UsernameKey{}, username)
 	userUUIDKey := fmt.Sprintf("UserName:UUID%s", username)
 	db := sw.NewDocumentStore()
-	db.Connected(ctx)
 	fmt.Println("Response to database being connected -> ", db.Connected(ctx))
 	// Check if the user exists in cache, otherwise create a new profile
 	if !cache.Exist(ctx, userUUIDKey) {
@@ -159,6 +158,8 @@ func Callback(w http.ResponseWriter, r *http.Request) {
 		cache.Set(ctx, userUUIDKey, userDoc.UUID, Month*12)
 		log.Printf("User %s's MongoDB document was generated with UUID: %s", userDoc.UserProfileResponse.DisplayName, userDoc.UUID)
 	}
+	fmt.Println("Done testing returing now")
+	return
 
 	// Retrieve the user's UUID from the cache
 	log.Println("Attempting to retrieve user from Redis cache")
@@ -304,9 +305,9 @@ func getToken(code string) (models.TokenResponse, error) {
 
 	// Read response body
 	body, _ := io.ReadAll(resp.Body)
-	fmt.Printf("Token Response Status: %d\n,  Token Response Body %s", resp.StatusCode, string(body))
 
 	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("Token Response Status: %d\n,  Token Response Body %s", resp.StatusCode, string(body))
 		return invalidResponse, fmt.Errorf("error: response status code %d", resp.StatusCode)
 	}
 

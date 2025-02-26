@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -625,55 +626,68 @@ func newID() string {
 End of mongoDB implementation
 */
 var (
-	database = NewDocumentStore()
+	database DocumentStore
+	dbLock   sync.Mutex
 )
 
-// TODO: Beofore testing on other code base. just implement the below methods using the interfaces
+func CreateNewMongoInstance() DocumentStore {
+	// Thread-safe singleton pattern
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
+	if database == nil {
+		fmt.Println("🔄 Initializing MongoDB connection...")
+		database = NewDocumentStore()
+		fmt.Println("✅ MongoDB connection established")
+	}
+	return database
+}
+
 func SaveUser(user *models.UserMongoDocument) error {
 	fmt.Println("Attempting to save user info with name ", user.UserProfileResponse.DisplayName)
-	return database.SaveUser(user)
+	return CreateNewMongoInstance().SaveUser(user)
 }
 
 // Assume that anything that has a suffix of id is referring to a uuid, unless otherwise specified
 // for now just get working but later on there should be a slight level of
 // misdirection so that we can handle errors better
 func SubmitComment(songid string, comment models.UserComments) error {
-	return database.SubmitComment(songid, comment)
+	return CreateNewMongoInstance().SubmitComment(songid, comment)
 }
 func GetComments(songid string, limit, offset int) ([]models.UserComments, error) {
-	return database.GetComments(songid)
+	return CreateNewMongoInstance().GetComments(songid)
 }
 
 // find old and update it with new comment. if old cant be found return error
 func UpdateComment(oldCommentID string, new models.UserComments) (bool, error) {
-	return database.UpdateComment(oldCommentID, new)
+	return CreateNewMongoInstance().UpdateComment(oldCommentID, new)
 }
 
 func GetComment(commentID string) (*models.UserComments, error) {
-	return database.GetComment(commentID)
+	return CreateNewMongoInstance().GetComment(commentID)
 }
 
-func DeleteComment(commentID string) error { return database.DeleteComment(commentID) }
+func DeleteComment(commentID string) error { return CreateNewMongoInstance().DeleteComment(commentID) }
 
 // if any of these return nil it means it wasnt found
 func GetUserDocument(userid string) (*models.UserMongoDocument, error) {
-	return database.GetUserByID(userid)
+	return CreateNewMongoInstance().GetUserByID(userid)
 }
 func GetUserSongs(userid string) ([]models.SongTypes, error) {
-	return database.GetUserSongs(userid)
+	return CreateNewMongoInstance().GetUserSongs(userid)
 }
 func GetUserComments(userid string) ([]models.UserComments, error) {
-	return database.GetUserComments(userid)
+	return CreateNewMongoInstance().GetUserComments(userid)
 }
 
 func AddSongtoDB(songURI string) error {
-	return database.AddSongtoDB(songURI)
+	return CreateNewMongoInstance().AddSongtoDB(songURI)
 
 }
 func ReturnSongbyID(songURI string) (*models.SongTypes, error) {
-	return database.GetSongByID(songURI)
+	return CreateNewMongoInstance().GetSongByID(songURI)
 }
 
 func GetUserByID(userUUID string) (*models.UserMongoDocument, error) {
-	return database.GetUserByID(userUUID)
+	return CreateNewMongoInstance().GetUserByID(userUUID)
 }
