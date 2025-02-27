@@ -17,38 +17,27 @@ var (
 	port = "80"
 )
 
-/*
-API Walkthrough & Validation Testing
-(1)
-(2)
-Define how the front-end authenticates users with the back-end.
-Decide on authentication method (tokens, username/password, etc.).
-Handle duplicate usernames and define security best practices.
-*/
 func init() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
-}
 
-func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
-	fmt.Printf("mongoDB connection uri %s\n redis connection string %s\n ", os.Getenv("MONGO_URI"), os.Getenv("REDIS_ADDR"))
-	r := routes.InitRoutes() // /exist/r/ == /exist/r
+	fmt.Printf("mongoDB connection uri %s\n redis connection string %s redis Password %s \n ", os.Getenv("MONGO_URI"), os.Getenv("REDIS_ADDR"), os.Getenv("REDIS_PASSWORD"))
 	db := sw.CreateNewMongoInstance()
-	fmt.Println("Response of mongoDB connection function -> ", db.Connected(context.TODO()))
 	if db.Connected(context.TODO()) != nil {
 		log.Fatal("MongoDB is not connected")
 	}
-	cache := sw.NewCache[string, string]()
-	cache.Set(context.TODO(), "Richard", "king", 10)
+	_ = sw.NewCache[string, string]()
+	fmt.Println("All external Infra is good to Go -> Starting Main function \n \n")
+}
+
+func main() {
+
+	r := routes.InitRoutes() // /exist/r/ == /exist/r
 	addr := fmt.Sprintf(":%s", port)
-	fmt.Println("Server is running on port", addr)
+	fullSource := fmt.Sprintf("http://localhost:%s/test", port)
+	fmt.Println("Server is running on port", addr, " \n Full url: ", fullSource)
 	http.ListenAndServe(addr, r)
 
 }
