@@ -5,15 +5,23 @@ from concurrent import futures
 import random
 from pymongo import MongoClient
 
-# MongoDB connection details
-MONGO_HOST = "localhost"
-MONGO_PORT = 27017
-MONGO_USER = "admin"
-MONGO_PASS = "secretpassword"
-MONGO_DB = "test_db"
+# MongoDB connection details <- old
+#MONGO_HOST = "localhost"
+#MONGO_PORT = 27017
+#MONGO_USER = "admin"
+#MONGO_PASS = "secretpassword"
+#MONGO_DB = "test_db"
 
 # MongoDB URI with authentication
-MONGO_URI = f"mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/"
+#MONGO_URI = f"mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/"
+
+MONGO_HOST = "cluster0.avlxk.mongodb.net"
+MONGO_USER = "rbb98"
+MONGO_PASS = "cfxARjWMSnojKSjj"
+MONGO_DB = "test_db"
+
+# MongoDB URI with authentication (Atlas Cloud Connection)
+MONGO_URI = f"mongodb+srv://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}/{MONGO_DB}?retryWrites=true&w=majority"
 
 def userCollection():
     client = MongoClient(MONGO_URI)

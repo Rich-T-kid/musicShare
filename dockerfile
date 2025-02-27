@@ -32,5 +32,10 @@ COPY reccommendations/grpc/requirements.txt /app/reccommendations/grpc/requireme
 # Install Python dependencies
 RUN pip install --no-cache-dir -r /app/grpc/requirements.txt
 
+ENV MONGO_URI="mongodb+srv://rbb98:cfxARjWMSnojKSjj@cluster0.avlxk.mongodb.net/?retryWrites=true&w=majority"
+ENV REDIS_ADDR="redis-17635.c16.us-east-1-3.ec2.redns.redis-cloud.com:17635"
+ENV REDIS_PASSWORD="Y3TiIwq5yIk2o7TcnRonae57sWyds6sl"
+
+
 EXPOSE 80
 CMD ["./server"]

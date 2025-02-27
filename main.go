@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 
 	"github.com/joho/godotenv"
 
@@ -17,6 +18,15 @@ var (
 	port = "80"
 )
 
+func startGRPCServer() {
+	cmd := exec.Command("bash", "-c", "source reccommendations/grpc/venv/bin/activate && python3 reccommendations/grpc/server.py") // Example: list files in long format
+	res, err := cmd.Output()
+	if err != nil {
+		log.Fatal("Python Sever Failed to start with an error of: ", err)
+		return
+	}
+	fmt.Printf("Python GRPC server Response: %s\n", string(res))
+}
 func init() {
 	err := godotenv.Load()
 	if err != nil {
@@ -29,7 +39,8 @@ func init() {
 		log.Fatal("MongoDB is not connected")
 	}
 	_ = sw.NewCache[string, string]()
-	fmt.Println("All external Infra is good to Go -> Starting Main function \n \n")
+	go startGRPCServer()
+	fmt.Print("All external Infra is good to Go!! \n \n")
 }
 
 func main() {
@@ -38,6 +49,9 @@ func main() {
 	addr := fmt.Sprintf(":%s", port)
 	fullSource := fmt.Sprintf("http://localhost:%s/test", port)
 	fmt.Println("Server is running on port", addr, " \n Full url: ", fullSource)
-	http.ListenAndServe(addr, r)
+	err := http.ListenAndServe(addr, r)
+	if err != nil {
+		log.Fatal("Server has been Ended by error :-> ", err)
+	}
 
 }
