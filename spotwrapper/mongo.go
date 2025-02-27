@@ -176,7 +176,7 @@ type SongStore interface {
 	DeleteSong(songID string) error
 }
 type CommentStore interface {
-	SubmitComment(songID string, comment models.UserComments) error
+	SubmitComment(songID string, comment models.UserComments) (string, error)
 	GetComments(songID string) ([]models.UserComments, error)
 	UpdateComment(oldComment string, newComment models.UserComments) (bool, error)
 	DeleteComment(commentID string) error
@@ -487,7 +487,7 @@ func (m *MongoDBStore) DeleteSong(songID string) error {
 }
 
 // Implement CommentStore methods
-func (m *MongoDBStore) SubmitComment(songID string, comment models.UserComments) error {
+func (m *MongoDBStore) SubmitComment(songID string, comment models.UserComments) (string, error) {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("songs")
 
@@ -509,7 +509,7 @@ func (m *MongoDBStore) SubmitComment(songID string, comment models.UserComments)
 	// Try updating the song document
 	updateResult, err := collection.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
-		return fmt.Errorf("failed to update song: %w", err)
+		return "", fmt.Errorf("failed to update song: %w", err)
 	}
 
 	// If the song does not exist, create a new document
@@ -524,14 +524,14 @@ func (m *MongoDBStore) SubmitComment(songID string, comment models.UserComments)
 
 		_, err := collection.InsertOne(context.TODO(), newSong)
 		if err != nil {
-			return fmt.Errorf("failed to insert new song: %w", err)
+			return "", fmt.Errorf("failed to insert new song: %w", err)
 		}
 		fmt.Printf("Created new song document with comment for %s\n", songID)
 	} else {
 		fmt.Printf("Successfully added comment to song %s\n", songID)
 	}
 
-	return nil
+	return comment.UUID, nil
 }
 
 // GetComments returns all the comments for a given song identified by songID (SongURI) or UUID.
@@ -556,6 +556,7 @@ func (m *MongoDBStore) GetComments(songID string) ([]models.UserComments, error)
 
 // UpdateComment searches for a comment with a matching comment ID
 // and updates it to the newComment. Returns true if the comment was updated.
+// TODO: I dont think that this should change the uuid of the existing comment.
 func (m *MongoDBStore) UpdateComment(commentID string, newComment models.UserComments) (bool, error) {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("songs")
@@ -663,7 +664,7 @@ func SaveUser(user *models.UserMongoDocument) error {
 // Assume that anything that has a suffix of id is referring to a uuid, unless otherwise specified
 // for now just get working but later on there should be a slight level of
 // misdirection so that we can handle errors better
-func SubmitComment(songid string, comment models.UserComments) error {
+func SubmitComment(songid string, comment models.UserComments) (string, error) {
 	return CreateNewMongoInstance().SubmitComment(songid, comment)
 }
 func GetComments(songid string, limit, offset int) ([]models.UserComments, error) {

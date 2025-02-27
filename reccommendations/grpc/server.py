@@ -4,7 +4,7 @@ from protobuff import song_pb2_grpc
 from concurrent import futures
 import random
 from pymongo import MongoClient
-
+import time
 # MongoDB connection details <- old
 #MONGO_HOST = "localhost"
 #MONGO_PORT = 27017
@@ -44,7 +44,7 @@ def get_random_songs(uuid):
         if not isinstance(top_singles, list) or not top_singles:
             return []
 
-        return random.sample(top_singles, min(5, len(top_singles)))
+        return random.sample(top_singles, min(10, len(top_singles)))
 
     except Exception as e:
         print(f"MongoDB query failed: {str(e)}")
@@ -56,23 +56,24 @@ test_song = {
     "rank": 1  # Will be randomized in your server logic
 }
 
-
 class SongService(song_pb2_grpc.SongServiceServicer):
     def GetSong(self, request, context):
         uuid = request.user_id
-        recommended_songs = [test_song]#get_random_songs(uuid)
+        recommended_songs = get_random_songs(uuid)
+        print(recommended_songs)
         n = len(recommended_songs)
 
         song_list = [
             song_pb2.songBody(
-                name=song["name"],
+                name=song["trackname"],
                 artist=song["artist"],
-                song_uri=song["song_uri"],
+                song_uri=song["tracklink"],
                 rank=random.randint(1, n)  # Assign a random rank between 1 and n
             ) for song in recommended_songs
         ]
-
+        print(song_list)
         return song_pb2.SongResponse(songs=song_list)
+
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
@@ -87,3 +88,8 @@ def serve():
 
 if __name__ == "__main__":
     serve()
+    """ sv = get_random_songs("8eeb1587-0d15-4602-9287-d3dd4cb48631")
+    for song in sv:
+        print(song["trackname"],song["artist"],song["tracklink"])
+        
+    print("done")"""

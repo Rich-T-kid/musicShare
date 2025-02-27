@@ -219,7 +219,8 @@ func TestCommentStore(t *testing.T) {
 		Review:   "Nice song!",
 		SongID:   songURI,
 	}
-	if err := store.SubmitComment(songURI, comment); err != nil {
+	_, err := store.SubmitComment(songURI, comment)
+	if err != nil {
 		t.Fatalf("SubmitComment failed: %v", err)
 	}
 

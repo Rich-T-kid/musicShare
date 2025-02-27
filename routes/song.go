@@ -125,13 +125,20 @@ func Comments(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// submit Comment under a song
-		err = sw.SubmitComment(request.SongURI, request.UserResp)
+		// TODO: This needs to return the comment UUID to the client
+		newUUID, err := sw.SubmitComment(request.SongURI, request.UserResp)
 		if err != nil {
 			w.WriteHeader(500)
 			w.Write([]byte(fmt.Sprintf("Error has occured submiting comment")))
 			return
 		}
 		w.WriteHeader(http.StatusOK)
+		response := struct {
+			NEW_UUID string `json:"comment_uuid"`
+		}{
+			NEW_UUID: newUUID,
+		}
+		json.NewEncoder(w).Encode(response)
 	case "GET":
 		songURI := r.URL.Query().Get("songURI")
 		if songURI == "" {
@@ -148,6 +155,9 @@ func Comments(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.WriteHeader(http.StatusOK)
+		if len(comments) == 0 {
+			json.NewEncoder(w).Encode([]string{})
+		}
 		json.NewEncoder(w).Encode(comments)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -166,7 +176,7 @@ func CommentsID(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		comment, err := sw.GetComment(commentID)
 		if err != nil { // doesnt exist
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte(fmt.Sprintf("no comment exist with the commentID passed in %s", commentID)))
 			return
 		}
