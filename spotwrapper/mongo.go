@@ -8,7 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v9"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -40,18 +41,29 @@ type spotish[T comparable, V any] struct {
 
 // Function to initialize a new Redis client
 func newSpotCache[T comparable, V any]() *spotish[T, V] {
-	redisClientURI := os.Getenv("REDIS_ADDR")
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 	client := redis.NewClient(&redis.Options{
-		Addr:     redisClientURI,
-		Password: "", // No password set
-		DB:       0,  // Use default DB
+		Addr:     os.Getenv("REDIS_ADDR"),
+		Username: "default",
+		Password: os.Getenv("REDIS_PASSWORD"),
+		DB:       0,
 	})
+
+	_, err = client.Ping(context.TODO()).Result()
+	if err != nil {
+		log.Fatal("Reddis Instance is not returnng correctly (Response) ->  %e", err)
+		return nil
+	}
+	fmt.Println("Reddis Instance is good to go")
 	return &spotish[T, V]{client: client}
 }
 
 // Get method retrieves a value from Redis cache
 func (s *spotish[T, V]) Get(ctx context.Context, key string) V {
-	str, err := s.client.Get(key).Result()
+	str, err := s.client.Get(ctx, key).Result()
 	if err != nil {
 		var zero V
 		fmt.Printf("Get key: %s , Error From cache %e \n ", key, err)
@@ -71,7 +83,7 @@ func (s *spotish[T, V]) Get(ctx context.Context, key string) V {
 
 // Set method stores a value in Redis cache
 func (s *spotish[T, V]) Set(ctx context.Context, key string, data T, expire int) {
-	err := s.client.Set(key, fmt.Sprintf("%v", data), time.Duration(expire)*time.Hour).Err()
+	err := s.client.Set(ctx, key, fmt.Sprintf("%v", data), time.Duration(expire)*time.Hour).Err()
 	if err != nil {
 		fmt.Println("Error setting cache:", err)
 	}
@@ -79,7 +91,7 @@ func (s *spotish[T, V]) Set(ctx context.Context, key string, data T, expire int)
 
 // Delete method removes a key from Redis cache
 func (s *spotish[T, V]) Delete(ctx context.Context, key string) {
-	err := s.client.Del(key).Err()
+	err := s.client.Del(ctx, key).Err()
 	if err != nil {
 		fmt.Println("Error deleting cache key:", err)
 	}
@@ -87,7 +99,7 @@ func (s *spotish[T, V]) Delete(ctx context.Context, key string) {
 
 // Exist method checks if a key exists in Redis cache
 func (s *spotish[T, V]) Exist(ctx context.Context, key string) bool {
-	exists, err := s.client.Exists(key).Result()
+	exists, err := s.client.Exists(ctx, key).Result()
 	if err != nil {
 		return false
 	}
@@ -96,12 +108,12 @@ func (s *spotish[T, V]) Exist(ctx context.Context, key string) bool {
 func (s *spotish[T, V]) StoreTokens(userID, accessToken, refreshToken string) error {
 	key := fmt.Sprintf("user-token:%s", userID) // Store by user ID
 
-	err := s.client.HSet(key, "access_token", accessToken).Err()
+	err := s.client.HSet(context.TODO(), key, "access_token", accessToken).Err()
 	if err != nil {
 		return fmt.Errorf("failed to store access token in Redis: %w", err)
 	}
 
-	err = s.client.HSet(key, "refresh_token", refreshToken).Err()
+	err = s.client.HSet(context.TODO(), "refresh_token", refreshToken).Err()
 	if err != nil {
 		return fmt.Errorf("failed to store refresh token in Redis: %w", err)
 	}
@@ -115,12 +127,12 @@ func (s *spotish[T, V]) GetTokens(userID string) (string, string, error) {
 	key := fmt.Sprintf("user-token:%s", userID)
 
 	// Fetch both access and refresh tokens
-	accessToken, err := s.client.HGet(key, "access_token").Result()
+	accessToken, err := s.client.HGet(context.TODO(), key, "access_token").Result()
 	if err != nil {
 		return "", "", fmt.Errorf("error fetching access token: %w", err)
 	}
 
-	refreshToken, err := s.client.HGet(key, "refresh_token").Result()
+	refreshToken, err := s.client.HGet(context.TODO(), key, "refresh_token").Result()
 	if err != nil {
 		return "", "", fmt.Errorf("error fetching refresh token: %w", err)
 	}
@@ -218,7 +230,7 @@ func (m *MongoDBStore) Connected(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("could not list databases: %w", err)
 	}
-	//fmt.Println("Available databases:", availableDBs)
+	fmt.Println("Available databases:", availableDBs)
 
 	// Verify each expected database and its collections.
 	for _, expectedDB := range m.databases {

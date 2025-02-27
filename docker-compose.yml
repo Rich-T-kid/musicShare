@@ -1,25 +1,6 @@
 version: '3.8'
 
 services:
-  mongodb:
-    image: mongo:latest
-    container_name: mongodb
-    restart: always
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: secretpassword
-    volumes:
-      - mongo_data:/data/db
-    networks:
-      - app_network
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh --quiet mongodb://admin:secretpassword@localhost:27017/?authSource=admin
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:latest
     container_name: redis
@@ -28,35 +9,11 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    networks:
-      - app_network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  web-server:
-    build:
-      context: .
-      dockerfile: dockerfile
-    ports:
-      - "80:80"
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      MONGO_URI: mongodb://admin:secretpassword@mongodb:27017/?authSource=admin
-      REDIS_ADDR: redis:6379
-    networks:
-      - app_network
-
-
 volumes:
-  mongo_data:
   redis_data:
-networks:
-  app_network: 
-    driver: bridge
