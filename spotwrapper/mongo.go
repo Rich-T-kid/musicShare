@@ -44,6 +44,15 @@ func newSpotCache[T comparable, V any]() *spotish[T, V] {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}*/
+	mongoURI := os.Getenv("MONGO_URI")
+	redisAddr := os.Getenv("REDIS_ADDR")
+	redisPassword := os.Getenv("REDIS_PASSWORD")
+
+	// Print them before proceeding
+	fmt.Println("MongoDB URI:", mongoURI)
+	fmt.Println("Redis Address:", redisAddr)
+	fmt.Println("Redis Password:", redisPassword)
+
 	client := redis.NewClient(&redis.Options{
 		Addr:     os.Getenv("REDIS_ADDR"),
 		Username: "default",
