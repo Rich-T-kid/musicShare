@@ -36,6 +36,6 @@ ENV MONGO_URI="mongodb+srv://rbb98:cfxARjWMSnojKSjj@cluster0.avlxk.mongodb.net/?
 ENV REDIS_ADDR="redis-17635.c16.us-east-1-3.ec2.redns.redis-cloud.com:17635"
 ENV REDIS_PASSWORD="Y3TiIwq5yIk2o7TcnRonae57sWyds6sl"
 
-EXPOSE 80
+EXPOSE 8080
 
 CMD ["./server"]
