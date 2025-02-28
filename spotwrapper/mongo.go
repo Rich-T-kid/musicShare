@@ -52,11 +52,11 @@ func newSpotCache[T comparable, V any]() *spotish[T, V] {
 	fmt.Println("MongoDB URI:", mongoURI)
 	fmt.Println("Redis Address:", redisAddr)
 	fmt.Println("Redis Password:", redisPassword)
-
+	time.Sleep(time.Second * 15)
 	client := redis.NewClient(&redis.Options{
-		Addr:     redisAddr,
+		Addr:     "redis-17635.c16.us-east-1-3.ec2.redns.redis-cloud.com:17635",
 		Username: "default",
-		Password: redisPassword,
+		Password: "Y3RiIwq5yIk2o7TcnRonae57sWyds6sl",
 		DB:       0,
 	})
 
@@ -665,6 +665,7 @@ func CreateNewMongoInstance() DocumentStore {
 	fmt.Println("Redis Address:", redisAddr)
 	fmt.Println("Redis Password:", redisPassword)
 
+	time.Sleep(time.Second * 15)
 	if database == nil {
 		fmt.Println("🔄 Initializing MongoDB connection...")
 		database = NewDocumentStore()
