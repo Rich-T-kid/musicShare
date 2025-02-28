@@ -656,6 +656,15 @@ func CreateNewMongoInstance() DocumentStore {
 	dbLock.Lock()
 	defer dbLock.Unlock()
 
+	mongoURI := os.Getenv("MONGO_URI")
+	redisAddr := os.Getenv("REDIS_ADDR")
+	redisPassword := os.Getenv("REDIS_PASSWORD")
+
+	// Print them before proceeding
+	fmt.Println("MongoDB URI:", mongoURI)
+	fmt.Println("Redis Address:", redisAddr)
+	fmt.Println("Redis Password:", redisPassword)
+
 	if database == nil {
 		fmt.Println("🔄 Initializing MongoDB connection...")
 		database = NewDocumentStore()
