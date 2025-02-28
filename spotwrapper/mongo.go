@@ -54,9 +54,9 @@ func newSpotCache[T comparable, V any]() *spotish[T, V] {
 	fmt.Println("Redis Password:", redisPassword)
 
 	client := redis.NewClient(&redis.Options{
-		Addr:     os.Getenv("REDIS_ADDR"),
+		Addr:     redisAddr,
 		Username: "default",
-		Password: os.Getenv("REDIS_PASSWORD"),
+		Password: redisPassword,
 		DB:       0,
 	})
 
