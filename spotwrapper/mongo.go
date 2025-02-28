@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v9"
-	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -41,10 +40,10 @@ type spotish[T comparable, V any] struct {
 
 // Function to initialize a new Redis client
 func newSpotCache[T comparable, V any]() *spotish[T, V] {
-	err := godotenv.Load()
+	/*err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
-	}
+	}*/
 	client := redis.NewClient(&redis.Options{
 		Addr:     os.Getenv("REDIS_ADDR"),
 		Username: "default",
@@ -52,7 +51,7 @@ func newSpotCache[T comparable, V any]() *spotish[T, V] {
 		DB:       0,
 	})
 
-	_, err = client.Ping(context.TODO()).Result()
+	_, err := client.Ping(context.TODO()).Result()
 	if err != nil {
 		log.Fatal("Reddis Instance is not returnng correctly (Response) ->  %e", err)
 		return nil
