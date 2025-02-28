@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"os/exec"
 
 	"github.com/Rich-T-kid/musicShare/routes"
@@ -13,7 +12,7 @@ import (
 )
 
 var (
-	port = "80"
+	port = "8080"
 )
 
 // TODO: make is so that songs are added to the users JSON blob as well when they submit a comment or get a song Review.
@@ -32,21 +31,6 @@ func init() {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}*/
-	mongoURI := os.Getenv("MONGO_URI")
-	redisAddr := os.Getenv("REDIS_ADDR")
-	redisPassword := os.Getenv("REDIS_PASSWORD")
-
-	// Print them before proceeding
-	fmt.Println("MongoDB URI:", mongoURI)
-	fmt.Println("Redis Address:", redisAddr)
-	fmt.Println("Redis Password:", redisPassword)
-
-	// Check if any of them are empty
-	if mongoURI == "" || redisAddr == "" || redisPassword == "" {
-		log.Fatal("One or more required environment variables are missing")
-	}
-
-	fmt.Printf("mongoDB connection uri %s\n redis connection string %s redis Password %s \n ", os.Getenv("MONGO_URI"), os.Getenv("REDIS_ADDR"), os.Getenv("REDIS_PASSWORD"))
 	db := sw.CreateNewMongoInstance()
 	if db.Connected(context.TODO()) != nil {
 		log.Fatal("MongoDB is not connected")

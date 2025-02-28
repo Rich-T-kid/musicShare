@@ -44,15 +44,6 @@ func newSpotCache[T comparable, V any]() *spotish[T, V] {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}*/
-	mongoURI := os.Getenv("MONGO_URI")
-	redisAddr := os.Getenv("REDIS_ADDR")
-	redisPassword := os.Getenv("REDIS_PASSWORD")
-
-	// Print them before proceeding
-	fmt.Println("MongoDB URI:", mongoURI)
-	fmt.Println("Redis Address:", redisAddr)
-	fmt.Println("Redis Password:", redisPassword)
-	time.Sleep(time.Second * 15)
 	client := redis.NewClient(&redis.Options{
 		Addr:     "redis-17635.c16.us-east-1-3.ec2.redns.redis-cloud.com:17635",
 		Username: "default",
@@ -656,16 +647,6 @@ func CreateNewMongoInstance() DocumentStore {
 	dbLock.Lock()
 	defer dbLock.Unlock()
 
-	mongoURI := os.Getenv("MONGO_URI")
-	redisAddr := os.Getenv("REDIS_ADDR")
-	redisPassword := os.Getenv("REDIS_PASSWORD")
-
-	// Print them before proceeding
-	fmt.Println("MongoDB URI:", mongoURI)
-	fmt.Println("Redis Address:", redisAddr)
-	fmt.Println("Redis Password:", redisPassword)
-
-	time.Sleep(time.Second * 15)
 	if database == nil {
 		fmt.Println("🔄 Initializing MongoDB connection...")
 		database = NewDocumentStore()
