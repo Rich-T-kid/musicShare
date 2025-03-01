@@ -125,7 +125,6 @@ func Comments(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// submit Comment under a song
-		// TODO: This needs to return the comment UUID to the client
 		newUUID, err := sw.SubmitComment(request.SongURI, request.UserResp)
 		if err != nil {
 			w.WriteHeader(500)
