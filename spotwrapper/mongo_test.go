@@ -51,7 +51,7 @@ var store DocumentStore
 // and tears it down after all tests have run.
 func TestMain(m *testing.M) {
 	// Create our document store.
-	store = newDocumentStore()
+	store = NewDocumentStore()
 	mongoStore, ok := store.(*MongoDBStore)
 	if !ok {
 		log.Fatalf("Expected store to be *MongoDBStore")
@@ -219,7 +219,8 @@ func TestCommentStore(t *testing.T) {
 		Review:   "Nice song!",
 		SongID:   songURI,
 	}
-	if err := store.SubmitComment(songURI, comment); err != nil {
+	_, err := store.SubmitComment(songURI, comment)
+	if err != nil {
 		t.Fatalf("SubmitComment failed: %v", err)
 	}
 

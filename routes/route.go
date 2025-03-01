@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/Rich-T-kid/musicShare/pkg/logs"
 	"github.com/Rich-T-kid/musicShare/pkg/models"
@@ -20,7 +22,7 @@ var (
 	clientID      = "8b277fb167214401bb9486e53d183963"
 	clientSecrete = "db97671791ec461f922c52359d89cddf"
 	authURL       = "https://accounts.spotify.com/authorize"
-	redirect      = "http://localhost:8080/callback"
+	redirect      = "http://localhost:80/callback"
 	token_url     = "https://accounts.spotify.com/api/token"
 	scopes        = "user-library-read user-modify-playback-state playlist-modify-public playlist-modify-private playlist-read-private user-top-read user-follow-read"
 	randomString  = "ChangeLater"
@@ -66,65 +68,159 @@ func RedirectPage(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// html template
 func Callback(w http.ResponseWriter, r *http.Request) {
+	log.Println("[Callback] Received callback request")
+
+	// Parse the incoming request URL
 	u, err := url.Parse(r.URL.String())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to parse request URL", http.StatusInternalServerError)
+		log.Printf("[Callback] Error parsing request URL: %v", err)
 		return
 	}
+
+	// Extract query parameters
 	QV := u.Query()
 	code := QV.Get("code")
 	state := QV.Get("state")
 	spotifyError := QV.Get("error")
+
+	log.Printf("[Callback] Extracted query params - code: %s, state: %s, error: %s", code, state, spotifyError)
+
+	// Validate state to prevent CSRF attacks
 	if state != randomString {
-		http.Error(w, "invalid state code returned by spotify", http.StatusUnauthorized)
-		return
-	}
-	if spotifyError != "" {
-		http.Error(w, "Error occurred with Spotify login", http.StatusBadRequest)
+		http.Error(w, "Invalid state code returned by Spotify", http.StatusUnauthorized)
+		log.Printf("[Callback] State mismatch: expected %s, got %s", randomString, state)
 		return
 	}
 
+	// Handle Spotify errors
+	if spotifyError != "" {
+		http.Error(w, "Spotify login error: "+spotifyError, http.StatusBadRequest)
+		log.Printf("[Callback] Spotify login error: %s", spotifyError)
+		return
+	}
+
+	// Ensure authorization code is present
 	if code == "" {
 		http.Error(w, "Authorization code missing", http.StatusBadRequest)
+		log.Println("[Callback] Authorization code missing in callback")
 		return
 	}
 
+	// Retrieve access tokens from Spotify
+	log.Println("[Callback] Requesting access token from Spotify")
 	tokens, err := getToken(code)
 	if err != nil {
 		http.Error(w, "Failed to get access token", http.StatusInternalServerError)
-		fmt.Println("Error getting access token:", err)
+		log.Printf("[Callback] Error getting access token: %v", err)
 		return
 	}
 
 	ctx := context.Background()
 	cache := userNamecache
-	userProfileData := sw.GetUserData(ctx, tokens.AccessToken)
-	var username = userProfileData.DisplayName
-	key := fmt.Sprintf("UserName:%s", username)
-	if !cache.Exist(ctx, key) {
-		cache.Set(ctx, key, "exist", Month * 12)
-	}
-	// TODO: Fix this later. right now reddis/mongoDB is acting dumb
-	cache.StoreTokens(username, tokens.AccessToken, tokens.Refresh)
-	// NOTE: you can uncomment this stuff below when mongoDB is working again
-	//ctx = context.WithValue(ctx, models.UsernameKey{}, username) // Username is passed along to all request made here
 
-	// check if the username already exist; if so dont generate a new user doc and just return the needed json, otherwise generate userdoc and store username and uuid pair in reddis
-	/* if cache.Exist(ctx,fmt.Sprintf("UserName:UUID%s",username)){
-		userDoc , err := sw.NewUserProfile(ctx, tokens.AccessToken)
-		if err != nil{
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("Inter Server error occured attempting to construct users mongoDB document, username : %s",username)))
-		}
-		key = fmt.Sprintf("UserName:UUID:%s",username)
-		cache.Set(ctx,key,uuid,month * 12)
+	// Fetch user profile from Spotify
+	log.Println("[Callback] Fetching user profile data from Spotify")
+	userProfileData := sw.GetUserData(ctx, tokens.AccessToken)
+	if userProfileData == nil {
+		http.Error(w, "Failed to fetch user profile data", http.StatusInternalServerError)
+		log.Println("[Callback] Error: user profile data is nil")
+		return
 	}
-	fmt.Printf("user %s's MongoDB document was generated with a uuid of %s",userDoc.UserProfileResponse.DisplayName,userDoc.UUID)
-	*/
-	fmt.Println("generated new access and refresh tokens,store the in cache and generated full user profile")
-	json.NewEncoder(w).Encode(userProfileData)
+
+	username := userProfileData.DisplayName
+	log.Printf("[Callback] Retrieved user profile - Username: %s", username)
+
+	key := fmt.Sprintf("UserName:%s", username)
+
+	// Cache the username if not already present
+	if !cache.Exist(ctx, key) {
+		cache.Set(ctx, key, "exist", Month*12)
+		log.Printf("[Callback] Cached new username: %s", username)
+	}
+	cache.StoreTokens(username, tokens.AccessToken, tokens.Refresh)
+
+	// Prepare context with username
+	ctx = context.WithValue(ctx, models.UsernameKey{}, username)
+	userUUIDKey := fmt.Sprintf("UserName:UUID%s", username)
+
+	// Ensure database connection is available
+	log.Println("[Callback] Checking database connection")
+	db := sw.NewDocumentStore()
+	dbStatus := db.Connected(ctx)
+	log.Printf("[Callback] Database connection status: %v", dbStatus)
+
+	// Check if the user exists in cache, otherwise create a new profile
+	if !cache.Exist(ctx, userUUIDKey) {
+		log.Printf("[Callback] User %s does not exist in cache, generating new profile", username)
+
+		userDoc, err := sw.NewUserProfile(ctx, tokens.AccessToken)
+		if err != nil {
+			http.Error(w, "Internal server error while creating user profile", http.StatusInternalServerError)
+			log.Printf("[Callback] Error constructing user MongoDB document for %s: %v", username, err)
+			return
+		}
+
+		log.Printf("[Callback] Successfully created user profile for %s", username)
+
+		err = sw.SaveUser(userDoc)
+		if err != nil {
+			http.Error(w, "Internal server error while saving user profile", http.StatusInternalServerError)
+			log.Printf("[Callback] Error saving user MongoDB document for %s: %v", username, err)
+			return
+		}
+
+		cache.Set(ctx, userUUIDKey, userDoc.UUID, Month*12)
+		log.Printf("[Callback] User %s's MongoDB document was generated with UUID: %s", userDoc.UserProfileResponse.DisplayName, userDoc.UUID)
+	}
+
+	// Retrieve the user's UUID from the cache
+	log.Println("[Callback] Attempting to retrieve user UUID from Redis cache")
+	presentUserUUID := cache.Get(ctx, userUUIDKey)
+
+	if presentUserUUID == "" {
+		http.Error(w, "User UUID not found in cache", http.StatusInternalServerError)
+		log.Printf("[Callback] Error: User UUID missing from cache for %s", username)
+		return
+	}
+
+	log.Printf("[Callback] User UUID retrieved from cache: %s", presentUserUUID)
+
+	// Fetch user document from MongoDB
+	log.Printf("[Callback] Fetching user document from MongoDB for UUID: %s", presentUserUUID)
+	userDoc, err := sw.GetUserByID(presentUserUUID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("User %s not found in MongoDB", username), http.StatusNotFound)
+		log.Printf("[Callback] Error retrieving user %s with UUID %s: %v", username, presentUserUUID, err)
+		return
+	}
+	if userDoc == nil {
+		http.Error(w, "User document not found", http.StatusNotFound)
+		log.Printf("[Callback] Error: Retrieved user document is nil for UUID: %s", presentUserUUID)
+		return
+	}
+
+	// Prepare and send response
+	log.Printf("[Callback] Successfully retrieved user document for %s", username)
+	userinfo := struct {
+		UUID             string
+		Name             string
+		UserCreationDate time.Time
+		Date             time.Time
+	}{
+		UUID:             userDoc.UUID,
+		Name:             userDoc.UserProfileResponse.DisplayName,
+		UserCreationDate: userDoc.CreatedAt,
+		Date:             time.Now(),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(userinfo); err != nil {
+		http.Error(w, "Failed to encode JSON response", http.StatusInternalServerError)
+		log.Printf("[Callback] Error encoding JSON response: %v", err)
+	}
 }
 
 func LoveShare(w http.ResponseWriter, r *http.Request) {
@@ -216,6 +312,7 @@ func getToken(code string) (models.TokenResponse, error) {
 	// Make request
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	fmt.Printf("Exact request sent to spotify %+v", resp.Request)
 	if err != nil {
 		fmt.Println("Error making request:", err)
 		return invalidResponse, err
@@ -224,9 +321,9 @@ func getToken(code string) (models.TokenResponse, error) {
 
 	// Read response body
 	body, _ := io.ReadAll(resp.Body)
-	fmt.Printf("Token Response Status: %d\n", resp.StatusCode)
 
 	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("Token Response Status: %d\n,  Token Response Body %s", resp.StatusCode, string(body))
 		return invalidResponse, fmt.Errorf("error: response status code %d", resp.StatusCode)
 	}
 

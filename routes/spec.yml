@@ -72,16 +72,16 @@ paths:
     get:
       summary: Retrieve comments for a song
       description: |
-        **Note**: This endpoint expects a JSON body (unusual for GET) containing the songID.  
+        **Note**: This endpoint expects a query parameter containing the songID.  
         Returns all comments associated with the given song URI.
       tags:
         - Comments
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CommentsRequest"
+      parameters:
+        - in : path
+          name: songURI
+          schema:
+            type: string
+          required: true
       responses:
         "200":
           description: OK - Returns an array of comments for the specified song.

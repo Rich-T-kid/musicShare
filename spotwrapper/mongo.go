@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -39,18 +40,29 @@ type spotish[T comparable, V any] struct {
 
 // Function to initialize a new Redis client
 func newSpotCache[T comparable, V any]() *spotish[T, V] {
-	redisClientURI := os.Getenv("REDIS_ADDR")
+	/*err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}*/
 	client := redis.NewClient(&redis.Options{
-		Addr:     redisClientURI,
-		Password: "", // No password set
-		DB:       0,  // Use default DB
+		Addr:     "redis-17635.c16.us-east-1-3.ec2.redns.redis-cloud.com:17635",
+		Username: "default",
+		Password: "Y3RiIwq5yIk2o7TcnRonae57sWyds6sl",
+		DB:       0,
 	})
+
+	_, err := client.Ping(context.TODO()).Result()
+	if err != nil {
+		log.Fatal("Reddis Instance is not returnng correctly (Response) ->  %e", err)
+		return nil
+	}
+	fmt.Println("Reddis Instance is good to go")
 	return &spotish[T, V]{client: client}
 }
 
 // Get method retrieves a value from Redis cache
 func (s *spotish[T, V]) Get(ctx context.Context, key string) V {
-	str, err := s.client.Get(key).Result()
+	str, err := s.client.Get(ctx, key).Result()
 	if err != nil {
 		var zero V
 		fmt.Printf("Get key: %s , Error From cache %e \n ", key, err)
@@ -70,7 +82,7 @@ func (s *spotish[T, V]) Get(ctx context.Context, key string) V {
 
 // Set method stores a value in Redis cache
 func (s *spotish[T, V]) Set(ctx context.Context, key string, data T, expire int) {
-	err := s.client.Set(key, fmt.Sprintf("%v", data), time.Duration(expire)*time.Hour).Err()
+	err := s.client.Set(ctx, key, fmt.Sprintf("%v", data), time.Duration(expire)*time.Hour).Err()
 	if err != nil {
 		fmt.Println("Error setting cache:", err)
 	}
@@ -78,7 +90,7 @@ func (s *spotish[T, V]) Set(ctx context.Context, key string, data T, expire int)
 
 // Delete method removes a key from Redis cache
 func (s *spotish[T, V]) Delete(ctx context.Context, key string) {
-	err := s.client.Del(key).Err()
+	err := s.client.Del(ctx, key).Err()
 	if err != nil {
 		fmt.Println("Error deleting cache key:", err)
 	}
@@ -86,7 +98,7 @@ func (s *spotish[T, V]) Delete(ctx context.Context, key string) {
 
 // Exist method checks if a key exists in Redis cache
 func (s *spotish[T, V]) Exist(ctx context.Context, key string) bool {
-	exists, err := s.client.Exists(key).Result()
+	exists, err := s.client.Exists(ctx, key).Result()
 	if err != nil {
 		return false
 	}
@@ -95,12 +107,12 @@ func (s *spotish[T, V]) Exist(ctx context.Context, key string) bool {
 func (s *spotish[T, V]) StoreTokens(userID, accessToken, refreshToken string) error {
 	key := fmt.Sprintf("user-token:%s", userID) // Store by user ID
 
-	err := s.client.HSet(key, "access_token", accessToken).Err()
+	err := s.client.HSet(context.TODO(), key, "access_token", accessToken).Err()
 	if err != nil {
 		return fmt.Errorf("failed to store access token in Redis: %w", err)
 	}
 
-	err = s.client.HSet(key, "refresh_token", refreshToken).Err()
+	err = s.client.HSet(context.TODO(), "refresh_token", refreshToken).Err()
 	if err != nil {
 		return fmt.Errorf("failed to store refresh token in Redis: %w", err)
 	}
@@ -114,12 +126,12 @@ func (s *spotish[T, V]) GetTokens(userID string) (string, string, error) {
 	key := fmt.Sprintf("user-token:%s", userID)
 
 	// Fetch both access and refresh tokens
-	accessToken, err := s.client.HGet(key, "access_token").Result()
+	accessToken, err := s.client.HGet(context.TODO(), key, "access_token").Result()
 	if err != nil {
 		return "", "", fmt.Errorf("error fetching access token: %w", err)
 	}
 
-	refreshToken, err := s.client.HGet(key, "refresh_token").Result()
+	refreshToken, err := s.client.HGet(context.TODO(), key, "refresh_token").Result()
 	if err != nil {
 		return "", "", fmt.Errorf("error fetching refresh token: %w", err)
 	}
@@ -163,7 +175,7 @@ type SongStore interface {
 	DeleteSong(songID string) error
 }
 type CommentStore interface {
-	SubmitComment(songID string, comment models.UserComments) error
+	SubmitComment(songID string, comment models.UserComments) (string, error)
 	GetComments(songID string) ([]models.UserComments, error)
 	UpdateComment(oldComment string, newComment models.UserComments) (bool, error)
 	DeleteComment(commentID string) error
@@ -173,7 +185,7 @@ type CommentStore interface {
 /*
 Mongo DB implementation below
 */
-func newDocumentStore() DocumentStore {
+func NewDocumentStore() DocumentStore {
 	// Define MongoDB connection URI (matches Docker container settings)
 	mongoURI := os.Getenv("MONGO_URI")
 
@@ -187,7 +199,7 @@ func newDocumentStore() DocumentStore {
 	}
 
 	// Ping the database to check if it's reachable
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	err = client.Ping(ctx, nil)
 	if err != nil {
@@ -195,12 +207,11 @@ func newDocumentStore() DocumentStore {
 	}
 
 	fmt.Println("✅ Successfully connected to MongoDB")
-	db := []string{"test_db", "prod_db"}
-	collection := []string{"users", "comments", "songs"}
-	return &MongoDBStore{client: client,
-		databases:   db,
-		collections: collection,
-	}
+	//db := []string{"test_db", "prod_db"}
+	//collection := []string{"users", "comments", "songs"}
+	return &MongoDBStore{client: client} //databases:   db,
+	//collections: collection,
+
 }
 
 func (m *MongoDBStore) Connected(ctx context.Context) error {
@@ -218,11 +229,12 @@ func (m *MongoDBStore) Connected(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("could not list databases: %w", err)
 	}
-	//fmt.Println("Available databases:", availableDBs)
+	fmt.Println("Available databases:", availableDBs)
 
 	// Verify each expected database and its collections.
 	for _, expectedDB := range m.databases {
 		if !contains(availableDBs, expectedDB) {
+
 			return fmt.Errorf("expected database %q not found", expectedDB)
 		}
 
@@ -264,21 +276,17 @@ func (m *MongoDBStore) GetUserByID(userID string) (*models.UserMongoDocument, er
 
 	return &userDoc, nil
 }
+
 func (m *MongoDBStore) SaveUser(user *models.UserMongoDocument) error {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("users")
 	if user.UUID == "" {
-
+		log.Fatal("A users UUID should always already be generated by this point")
 		user.UUID = newID()
 	}
-	insertResult, err := collection.InsertOne(context.TODO(), user)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(user)
-	fmt.Println("Inserted document ID:", insertResult.InsertedID)
-
-	return nil /* implementation */
+	fmt.Printf("Adding user: %s with id: %s to MongoDB database %+v\n", user.UserProfileResponse.DisplayName, user.UUID, user)
+	_, err := collection.InsertOne(context.TODO(), user)
+	return err
 }
 
 // GetUserComments retrieves all comments stored in the user document that has the application-provided ID.
@@ -478,7 +486,7 @@ func (m *MongoDBStore) DeleteSong(songID string) error {
 }
 
 // Implement CommentStore methods
-func (m *MongoDBStore) SubmitComment(songID string, comment models.UserComments) error {
+func (m *MongoDBStore) SubmitComment(songID string, comment models.UserComments) (string, error) {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("songs")
 
@@ -500,7 +508,7 @@ func (m *MongoDBStore) SubmitComment(songID string, comment models.UserComments)
 	// Try updating the song document
 	updateResult, err := collection.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
-		return fmt.Errorf("failed to update song: %w", err)
+		return "", fmt.Errorf("failed to update song: %w", err)
 	}
 
 	// If the song does not exist, create a new document
@@ -515,14 +523,14 @@ func (m *MongoDBStore) SubmitComment(songID string, comment models.UserComments)
 
 		_, err := collection.InsertOne(context.TODO(), newSong)
 		if err != nil {
-			return fmt.Errorf("failed to insert new song: %w", err)
+			return "", fmt.Errorf("failed to insert new song: %w", err)
 		}
 		fmt.Printf("Created new song document with comment for %s\n", songID)
 	} else {
 		fmt.Printf("Successfully added comment to song %s\n", songID)
 	}
 
-	return nil
+	return comment.UUID, nil
 }
 
 // GetComments returns all the comments for a given song identified by songID (SongURI) or UUID.
@@ -547,6 +555,7 @@ func (m *MongoDBStore) GetComments(songID string) ([]models.UserComments, error)
 
 // UpdateComment searches for a comment with a matching comment ID
 // and updates it to the newComment. Returns true if the comment was updated.
+// TODO: I dont think that this should change the uuid of the existing comment.
 func (m *MongoDBStore) UpdateComment(commentID string, newComment models.UserComments) (bool, error) {
 	db := m.client.Database(DatabaseName)
 	collection := db.Collection("songs")
@@ -629,51 +638,68 @@ func newID() string {
 End of mongoDB implementation
 */
 var (
-	database = newDocumentStore()
+	database DocumentStore
+	dbLock   sync.Mutex
 )
 
-// TODO: Beofore testing on other code base. just implement the below methods using the interfaces
+func CreateNewMongoInstance() DocumentStore {
+	// Thread-safe singleton pattern
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
+	if database == nil {
+		fmt.Println("🔄 Initializing MongoDB connection...")
+		database = NewDocumentStore()
+		fmt.Println("✅ MongoDB connection established")
+	}
+	return database
+}
+
 func SaveUser(user *models.UserMongoDocument) error {
 	fmt.Println("Attempting to save user info with name ", user.UserProfileResponse.DisplayName)
-	return database.SaveUser(user)
+	return CreateNewMongoInstance().SaveUser(user)
 }
 
 // Assume that anything that has a suffix of id is referring to a uuid, unless otherwise specified
 // for now just get working but later on there should be a slight level of
 // misdirection so that we can handle errors better
-func SubmitComment(songid string, comment models.UserComments) error {
-	return database.SubmitComment(songid, comment)
+func SubmitComment(songid string, comment models.UserComments) (string, error) {
+	return CreateNewMongoInstance().SubmitComment(songid, comment)
 }
 func GetComments(songid string, limit, offset int) ([]models.UserComments, error) {
-	return database.GetComments(songid)
+	return CreateNewMongoInstance().GetComments(songid)
 }
 
 // find old and update it with new comment. if old cant be found return error
 func UpdateComment(oldCommentID string, new models.UserComments) (bool, error) {
-	return database.UpdateComment(oldCommentID, new)
+	return CreateNewMongoInstance().UpdateComment(oldCommentID, new)
 }
 
 func GetComment(commentID string) (*models.UserComments, error) {
-	return database.GetComment(commentID)
+	return CreateNewMongoInstance().GetComment(commentID)
 }
 
-func DeleteComment(commentID string) error { return database.DeleteComment(commentID) }
+func DeleteComment(commentID string) error { return CreateNewMongoInstance().DeleteComment(commentID) }
 
 // if any of these return nil it means it wasnt found
 func GetUserDocument(userid string) (*models.UserMongoDocument, error) {
-	return database.GetUserByID(userid)
+	return CreateNewMongoInstance().GetUserByID(userid)
 }
 func GetUserSongs(userid string) ([]models.SongTypes, error) {
-	return database.GetUserSongs(userid)
+	return CreateNewMongoInstance().GetUserSongs(userid)
 }
 func GetUserComments(userid string) ([]models.UserComments, error) {
-	return database.GetUserComments(userid)
+	return CreateNewMongoInstance().GetUserComments(userid)
 }
 
 func AddSongtoDB(songURI string) error {
-	return database.AddSongtoDB(songURI)
+	return CreateNewMongoInstance().AddSongtoDB(songURI)
 
 }
 func ReturnSongbyID(songURI string) (*models.SongTypes, error) {
-	return database.GetSongByID(songURI)
+	return CreateNewMongoInstance().GetSongByID(songURI)
+}
+
+func GetUserByID(userUUID string) (*models.UserMongoDocument, error) {
+	return CreateNewMongoInstance().GetUserByID(userUUID)
 }
